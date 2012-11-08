@@ -1,3 +1,7 @@
+Patched Version!
+=======
+less.js (used in development) and lessc behave differently with relative paths (e.g. background-image: url()), this fork is a 'tagged' maintainer version of cloudhead's upstream with relative path fixes from <https://github.com/SalimBensiali/less.js>
+
 less.js
 =======
 
