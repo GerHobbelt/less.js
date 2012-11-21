@@ -3,3 +3,4 @@ node_modules
 *.flymake
 *~
 .#*
+dist/*-szarsti-patch*

@@ -15,11 +15,10 @@ benchmark:
 #
 SRC = lib/less
 HEADER = build/header.js
-VERSION = `cat package.json | grep version \
-														| grep -o '[0-9]\.[0-9]\.[0-9]\+'`
-DIST = dist/less-${VERSION}.js
-RHINO = dist/less-rhino-${VERSION}.js
-DIST_MIN = dist/less-${VERSION}.min.js
+VERSION = `cat package.json | grep version | grep -o '[0-9]\.[0-9]\.[0-9]\+\.\([0-9a-z]\+\)\?'`
+DIST = dist/less-szarsti-patch-${VERSION}.js
+RHINO = dist/less-rhino-szarsti-patch-${VERSION}.js
+DIST_MIN = dist/less-szarsti-patch-${VERSION}.min.js
 
 less:
 	@@mkdir -p dist
