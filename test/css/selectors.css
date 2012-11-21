@@ -125,6 +125,10 @@ p a span {
 #blood.blood.red.black {
   color: black;
 }
+.foot .dark,
+.foot .light {
+  color: white;
+}
 :nth-child(3):nth-child(3) {
   second-use: deprecated;
 }
