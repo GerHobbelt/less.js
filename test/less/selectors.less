@@ -125,6 +125,12 @@ a {
     color:black;
   }
 }
+@skins: ~".dark, .light";
+.foot {
+  @{skins}{
+    color:white;
+  }
+}
 @num: 3;
 :nth-child(@{num}):nth-child(@num) {
 	second-use: deprecated;

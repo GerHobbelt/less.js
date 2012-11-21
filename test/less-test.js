@@ -93,6 +93,7 @@ function runTestSet(options, foldername, verifyFunction, nameModifier, doReplace
                 if (less === css) { ok('OK'); }
                 else if (err) {
                     fail("ERROR: " + (err && err.message));
+                    console.error(err);
                 } else {
                     difference("FAIL", css, less);
                 }
