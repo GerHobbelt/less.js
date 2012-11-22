@@ -1,0 +1,11 @@
+Since we can't put comments in the package.json file
+this file fills that gap.
+
+Dependencies needing comments:
+
+ "mapnik-reference"
+
+ We use our own fork because we need advertisement of "marker-multi-policy"
+ which is only in the reference of mapnik-2.1.1. Can be reverted to upstream
+ once this pull request is released:
+ https://github.com/mapnik/mapnik-reference/pull/41
