@@ -1,6 +1,6 @@
 {
   "name": "less",
-  "version": "1.4.0-b2",
+  "version": "1.4.0-b2-secoya",
   "description": "Leaner CSS",
   "homepage": "http://lesscss.org",
   "author": "Alexis Sellier <self@cloudhead.net>",
@@ -8,11 +8,11 @@
     "The Core Less Team"
   ],
   "bugs": {
-    "url": "https://github.com/cloudhead/less.js/issues"
+    "url": "https://github.com/secoya/less.js/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cloudhead/less.js.git"
+    "url": "https://github.com/secoya/less.js.git"
   },
   "bin": {
     "lessc": "./bin/lessc"
