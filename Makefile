@@ -23,6 +23,8 @@ DIST_MIN = dist/less-${VERSION}.min.js
 
 browser-prepare: DIST := test/browser/less.js
 
+latest: DIST := dist/less.js
+
 alpha: DIST := dist/less-${VERSION}-alpha.js
 alpha: DIST_MIN := dist/less-${VERSION}-alpha.min.js
 
@@ -81,6 +83,8 @@ min: less
 	@@uglifyjs ${DIST} > ${DIST_MIN}
 	@@echo ${DIST_MIN} built.
 
+latest: less
+	
 alpha: min
 
 beta: min
@@ -99,4 +103,4 @@ stable:
 	npm tag less@${VERSION} stable
 
 
-.PHONY: test benchmark
+.PHONY: test benchmark alpha beta latest dist min rhino stable browser-test browser-test-server browser-prepare
