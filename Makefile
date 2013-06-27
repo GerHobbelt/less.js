@@ -1,3 +1,6 @@
+# default rule: build
+all: version latest test benchmark
+
 #
 # Run all tests
 #
@@ -15,8 +18,7 @@ benchmark:
 #
 SRC = lib/less
 HEADER = build/header.js
-VERSION = `cat package.json | grep version \
-														| grep -o '[0-9]\.[0-9]\.[0-9]\+'`
+VERSION = `cat package.json | grep version | sed -e 's/^[^0-9]*\([0-9]\+\.[0-9]\+\.[0-9]\+\)[^0-9].*$$/\1/'`
 DIST = dist/less-${VERSION}.js
 RHINO = dist/less-rhino-${VERSION}.js
 DIST_MIN = dist/less-${VERSION}.min.js
@@ -30,6 +32,9 @@ alpha: DIST_MIN := dist/less-${VERSION}-alpha.min.js
 
 beta: DIST := dist/less-${VERSION}-beta.js
 beta: DIST_MIN := dist/less-${VERSION}-beta.min.js
+
+version:
+	@echo LESS version: ${VERSION}
 
 less:
 	@@mkdir -p dist
