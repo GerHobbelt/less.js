@@ -1,8 +1,10 @@
-# 1.4.1 WIP
+# 1.4.1
 
- - support for import inline option to include css that you do not want less to parse e.g. `@import (inline) "file.css";`
- - better support for modifyVars (refresh styles with new variables, using a file cache), is now more resiliant
- - support for import reference option to reference external css, but not output it. Any mixin calls or extend's will be output.
+2013-07-05
+
+ - fix syncImports and yui-compress option, as they were being ignored
+ - fixed several global variable leaks
+ - handle getting null or undefined passed as the options object
 
 # 1.4.0
 
