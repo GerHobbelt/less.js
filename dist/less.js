@@ -6057,6 +6057,6 @@ less.refresh(less.env === 'development');
 //
 // Define Less as an AMD module.
 if (typeof define === "function" && define.amd) {
-    define(function () { return less; } );
+    define("less", [], function () { return less; } );
 }
 })(window);
