@@ -1,5 +1,5 @@
 /*
- * LESS - Leaner CSS v1.4.0
+ * LESS - Leaner CSS v1.4.1
  * http://lesscss.org
  *
  * Copyright (c) 2009-2013, Alexis Sellier
@@ -460,8 +460,8 @@ less.Parser = function Parser(env) {
                         throw new(LessError)(e, env);
                     }
 
-                    if (options.yuicompress && less.mode === 'node') {
-                        return require('ycssmin').cssmin(css, options.maxLineLen);
+                    if (options.cleancss && less.mode === 'node') {
+                        return require('clean-css').process(css);
                     } else if (options.compress) {
                         return css.replace(/(^(\s)+)|((\s)+$)/g, "");
                     } else {
@@ -807,10 +807,13 @@ less.Parser = function Parser(env) {
                 javascript: function () {
                     var str, j = i, e;
 
-                    if (input.charAt(j) === '~') { j++, e = true } // Escaped strings
-                    if (input.charAt(j) !== '`') { return }
+                    if (input.charAt(j) === '~') { j++; e = true; } // Escaped strings
+                    if (input.charAt(j) !== '`') { return; }
+                    if (env.javascriptEnabled !== undefined && !env.javascriptEnabled) {
+                        error("You are using JavaScript, which has been disabled.");
+                    }
 
-                    e && $('~');
+                    if (e) { $('~'); }
 
                     if (str = $(/^`([^`]*)`/)) {
                         return new(tree.JavaScript)(str[1], i, e);
@@ -1155,7 +1158,13 @@ less.Parser = function Parser(env) {
                     return new(tree.Combinator)(null);
                 }
             },
-
+            //
+            // A CSS selector (see selector below)
+            // with less extensions e.g. the ability to extend and guard
+            //
+            lessSelector: function () {
+                return this.selector(true);
+            },
             //
             // A CSS Selector
             //
@@ -1164,11 +1173,15 @@ less.Parser = function Parser(env) {
             //
             // Selectors are made out of one or more Elements, see above.
             //
-            selector: function () {
-                var sel, e, elements = [], c, extend, extendList = [];
+            selector: function (isLess) {
+                var sel, e, elements = [], c, extend, extendList = [], when, condition;
 
-                while ((extend = $(this.extend)) || (e = $(this.element))) {
-                    if (extend) {
+                while ((isLess && (extend = $(this.extend))) || (isLess && (when = $(/^when/))) || (e = $(this.element))) {
+                    if (when) {
+                        condition = expect(this.conditions, 'expected condition');
+                    } else if (condition) {
+                        error("CSS guard can only be used at the end of selector");
+                    } else if (extend) {
                         extendList.push.apply(extendList, extend);
                     } else {
                         if (extendList.length) {
@@ -1181,7 +1194,7 @@ less.Parser = function Parser(env) {
                     if (c === '{' || c === '}' || c === ';' || c === ',' || c === ')') { break }
                 }
 
-                if (elements.length > 0) { return new(tree.Selector)(elements, extendList, i, env.currentFileInfo); }
+                if (elements.length > 0) { return new(tree.Selector)(elements, extendList, condition, i, env.currentFileInfo); }
                 if (extendList.length) { error("Extend must be used to extend a selector, it cannot be used on its own"); }
             },
             attribute: function () {
@@ -1224,10 +1237,13 @@ less.Parser = function Parser(env) {
                 if (env.dumpLineNumbers)
                     debugInfo = getDebugInfo(i, input, env);
 
-                while (s = $(this.selector)) {
+                while (s = $(this.lessSelector)) {
                     selectors.push(s);
                     $(this.comments);
-                    if (! $(',')) { break }
+                    if (! $(',')) { break; }
+                    if (s.condition) {
+                        error("Guards are only currently allowed on a single selector");
+                    }
                     $(this.comments);
                 }
 
@@ -2141,6 +2157,83 @@ tree.functions = {
 
         var uri = "'data:" + mimetype + ',' + buf + "'";
         return new(tree.URL)(new(tree.Anonymous)(uri));
+    },
+
+    "svg-gradient": function(direction) {
+
+        function throwArgumentDescriptor() {
+            throw { type: "Argument", message: "svg-gradient expects direction, start_color [start_position], [color position,]..., end_color [end_position]" };
+        }
+
+        if (arguments.length < 3) {
+            throwArgumentDescriptor();
+        }
+        var stops = Array.prototype.slice.call(arguments, 1),
+            gradientDirectionSvg,
+            gradientType = "linear",
+            rectangleDimension = 'x="0" y="0" width="1" height="1"',
+            useBase64 = true,
+            renderEnv = {compress: false},
+            returner,
+            directionValue = direction.toCSS(renderEnv),
+            i, color, position, positionValue, alpha;
+
+        switch (directionValue) {
+            case "to bottom":
+                gradientDirectionSvg = 'x1="0%" y1="0%" x2="0%" y2="100%"';
+                break;
+            case "to right":
+                gradientDirectionSvg = 'x1="0%" y1="0%" x2="100%" y2="0%"';
+                break;
+            case "to bottom right":
+                gradientDirectionSvg = 'x1="0%" y1="0%" x2="100%" y2="100%"';
+                break;
+            case "to top right":
+                gradientDirectionSvg = 'x1="0%" y1="100%" x2="100%" y2="0%"';
+                break;
+            case "ellipse":
+            case "ellipse at center":
+                gradientType = "radial";
+                gradientDirectionSvg = 'cx="50%" cy="50%" r="75%"';
+                rectangleDimension = 'x="-50" y="-50" width="101" height="101"';
+                break
+            default:
+                throw { type: "Argument", message: "svg-gradient direction must be 'to bottom', 'to right', 'to bottom right', 'to top right' or 'ellipse at center'" };
+        }
+        returner = '<?xml version="1.0" ?>' +
+            '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100%" height="100%" viewBox="0 0 1 1" preserveAspectRatio="none">' +
+            '<' + gradientType + 'Gradient id="gradient" gradientUnits="userSpaceOnUse" ' + gradientDirectionSvg + '>';
+
+        for (i = 0; i < stops.length; i+= 1) {
+            if (stops[i].value) {
+                color = stops[i].value[0];
+                position = stops[i].value[1];
+            } else {
+                color = stops[i];
+                position = undefined;
+            }
+
+            if (!(color instanceof tree.Color) || (!((i === 0 || i+1 === stops.length) && position === undefined) && !(position instanceof tree.Dimension))) {
+                throwArgumentDescriptor();
+            }
+            positionValue = position ? position.toCSS(renderEnv) : i === 0 ? "0%" : "100%";
+            alpha = color.alpha;
+            returner += '<stop offset="' + positionValue + '" stop-color="' + color.toRGB() + '"' + (alpha < 1 ? ' stop-opacity="' + alpha + '"' : '') + '/>';
+        }
+        returner += '</' + gradientType + 'Gradient>' +
+                    '<rect ' + rectangleDimension + ' fill="url(#gradient)" /></svg>';
+
+        if (useBase64) {
+            // only works in node, needs interface to what is supported in environment
+            try {
+                returner = new Buffer(returner).toString('base64');
+            } catch(e) {
+                useBase64 = false;
+            }
+        }
+
+        returner = "'data:image/svg+xml" + (useBase64 ? ";base64" : "") + "," + returner + "'";
+        return new(tree.URL)(new(tree.Anonymous)(returner));
     }
 };
 
@@ -2550,24 +2643,18 @@ tree.Color.prototype = {
                 return Math.round(c);
             }).concat(this.alpha).join(',' + (compress ? '' : ' ')) + ")";
         } else {
-            var color = this.rgb.map(function (i) {
-                i = Math.round(i);
-                i = (i > 255 ? 255 : (i < 0 ? 0 : i)).toString(16);
-                return i.length === 1 ? '0' + i : i;
-            }).join('');
+            var color = this.toRGB();
 
             if (compress) {
-                color = color.split('');
+                var splitcolor = color.split('');
 
                 // Convert color to short format
-                if (color[0] == color[1] && color[2] == color[3] && color[4] == color[5]) {
-                    color = color[0] + color[2] + color[4];
-                } else {
-                    color = color.join('');
+                if (splitcolor[1] == splitcolor[2] && splitcolor[3] == splitcolor[4] && splitcolor[5] == splitcolor[6]) {
+                    color = '#' + splitcolor[1] + splitcolor[3] + splitcolor[5];
                 }
             }
 
-            return '#' + color;
+            return color;
         }
     },
 
@@ -2588,6 +2675,14 @@ tree.Color.prototype = {
             result[c] = tree.operate(env, op, this.rgb[c], other.rgb[c]);
         }
         return new(tree.Color)(result, this.alpha + other.alpha);
+    },
+
+    toRGB: function () {
+        return '#' + this.rgb.map(function (i) {
+            i = Math.round(i);
+            i = (i > 255 ? 255 : (i < 0 ? 0 : i)).toString(16);
+            return i.length === 1 ? '0' + i : i;
+        }).join('');
     },
 
     toHSL: function () {
@@ -3047,10 +3142,12 @@ tree.Directive = function (name, value, index, currentFileInfo) {
     if (Array.isArray(value)) {
         this.ruleset = new(tree.Ruleset)([], value);
         this.ruleset.allowImports = true;
+        this.ruleset.root = true;
     } else {
         this.value = value;
     }
     this.currentFileInfo = currentFileInfo;
+
 };
 tree.Directive.prototype = {
     type: "Directive",
@@ -3065,7 +3162,6 @@ tree.Directive.prototype = {
         }
 
         if (this.ruleset) {
-            this.ruleset.root = true;
             return this.name + (env.compress ? '{' : ' {\n  ') +
                    this.ruleset.toCSS(env).trim().replace(/\n/g, '\n  ') +
                                (env.compress ? '}': '\n}\n');
@@ -3529,7 +3625,7 @@ tree.Media.prototype = {
     rulesets: function () { return tree.Ruleset.prototype.rulesets.apply(this.ruleset) },
     emptySelectors: function() { 
         var el = new(tree.Element)('', '&', 0);
-        return [new(tree.Selector)([el], null, this.index, this.currentFileInfo)];
+        return [new(tree.Selector)([el], null, null, this.index, this.currentFileInfo)];
     },
     markReferenced: function () {
         var rule, i;
@@ -4171,6 +4267,16 @@ tree.Ruleset.prototype = {
     matchArgs: function (args) {
         return !args || args.length === 0;
     },
+    matchCondition: function (args, env) {
+        var lastSelector = this.selectors[this.selectors.length-1];
+        if (lastSelector.condition &&
+            !lastSelector.condition.eval(
+                new(tree.evalEnv)(env,
+                    env.frames))) {
+            return false;
+        }
+        return true;
+    },
     resetCache: function () {
         this._rulesets = null;
         this._variables = null;
@@ -4552,20 +4658,28 @@ tree.Ruleset.prototype = {
 })(require('../tree'));
 (function (tree) {
 
-tree.Selector = function (elements, extendList, index, currentFileInfo, isReferenced) {
+tree.Selector = function (elements, extendList, condition, index, currentFileInfo, isReferenced) {
     this.elements = elements;
     this.extendList = extendList || [];
+    this.condition = condition;
     this.currentFileInfo = currentFileInfo || {};
     this.isReferenced = isReferenced;
+    if (!condition) {
+        this.evaldCondition = true;
+    }
 };
 tree.Selector.prototype = {
     type: "Selector",
     accept: function (visitor) {
         this.elements = visitor.visit(this.elements);
-        this.extendList = visitor.visit(this.extendList)
+        this.extendList = visitor.visit(this.extendList);
+        this.condition = visitor.visit(this.condition);
     },
-    createDerived: function(elements, extendList) {
-        return new(tree.Selector)(elements, extendList || this.extendList, this.index, this.currentFileInfo, this.isReferenced);
+    createDerived: function(elements, extendList, evaldCondition) {
+        evaldCondition = evaldCondition != null ? evaldCondition : this.evaldCondition;
+        var newSelector = new(tree.Selector)(elements, extendList || this.extendList, this.condition, this.index, this.currentFileInfo, this.isReferenced);
+        newSelector.evaldCondition = evaldCondition;
+        return newSelector;
     },
     match: function (other) {
         var elements = this.elements,
@@ -4589,11 +4703,13 @@ tree.Selector.prototype = {
         return true;
     },
     eval: function (env) {
+        var evaldCondition = this.condition && this.condition.eval(env);
+
         return this.createDerived(this.elements.map(function (e) {
             return e.eval(env);
         }), this.extendList.map(function(extend) {
             return extend.eval(env);
-        }));
+        }), evaldCondition);
     },
     toCSS: function (env) {
         if (this._css) { return this._css }
@@ -4619,6 +4735,9 @@ tree.Selector.prototype = {
     },
     getIsReferenced: function() {
         return !this.currentFileInfo.reference || this.isReferenced;
+    },
+    getIsOutput: function() {
+        return this.evaldCondition;
     }
 };
 
@@ -4792,6 +4911,8 @@ tree.jsify = function (obj) {
         'dumpLineNumbers',  // option - whether to dump line numbers
         'compress',         // option - whether to compress
         'processImports',   // option - whether to process imports. if false then imports will not be imported
+        'javascriptEnabled',// option - whether JavaScript is enabled. if undefined, defaults to true
+        'syncImport',       // option - whether to import synchronously
         'mime',             // browser only - mime type for sheet import
         'useFileCache',     // browser only - whether to use the per file session cache
         'currentFileInfo'   // information about the current file - for error reporting and importing and making urls relative etc.
@@ -4833,9 +4954,11 @@ tree.jsify = function (obj) {
         'silent',      // whether to swallow errors and warnings
         'verbose',     // whether to log more activity
         'compress',    // whether to compress
+        'yuicompress', // whether to compress with the outside tool yui compressor
         'ieCompat',    // whether to enforce IE compatibility (IE8 data-uri)
         'strictMath',  // whether math has to be within parenthesis
-        'strictUnits'  // whether units need to evaluate correctly
+        'strictUnits', // whether units need to evaluate correctly
+        'cleancss'     // whether to compress with clean-css
         ];
 
     tree.evalEnv = function(options, frames) {
@@ -5063,6 +5186,10 @@ tree.jsify = function (obj) {
             this.contexts.push(paths);
 
             if (! rulesetNode.root) {
+                rulesetNode.selectors = rulesetNode.selectors.filter(function(selector) { return selector.getIsOutput(); });
+                if (rulesetNode.selectors.length === 0) {
+                    rulesetNode.rules.length = 0;
+                }
                 rulesetNode.joinSelectors(paths, context, rulesetNode.selectors);
                 rulesetNode.paths = paths;
             }
