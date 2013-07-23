@@ -6,3 +6,5 @@ node_modules
 .idea
 test/browser/less.js
 test/browser/test-runner-*.htm
+.tar.gz
+.zip
