@@ -2,6 +2,7 @@ node_modules
 .emacs*
 *.flymake
 *~
+*.bak
 .#*
 .idea
 test/browser/less.js
