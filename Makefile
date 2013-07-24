@@ -1,5 +1,5 @@
 # default rule: build
-all: version latest test benchmark
+all: version amd-browser-strict test benchmark
 
 #
 # Run all tests
@@ -25,6 +25,9 @@ DIST_MIN = dist/less-${VERSION}.min.js
 
 browser-prepare: DIST := test/browser/less.js
 
+amd-latest: DIST := dist/less.js
+amd-browser-strict: DIST := dist/less-amd-browser-strict.js
+
 latest: DIST := dist/less.js
 
 alpha: DIST := dist/less-${VERSION}-alpha.js
@@ -40,8 +43,7 @@ less:
 	@@mkdir -p dist
 	@@touch ${DIST}
 	@@cat ${HEADER} | sed s/@VERSION/${VERSION}/ > ${DIST}
-	@@echo "(function (window, undefined) {" >> ${DIST}
-	@@cat build/require.js\
+	@@cat build/amd-prologue.js\
 	      ${SRC}/parser.js\
 	      ${SRC}/functions.js\
 	      ${SRC}/colors.js\
@@ -53,8 +55,8 @@ less:
 	      ${SRC}/join-selector-visitor.js\
 	      ${SRC}/extend-visitor.js\
 	      ${SRC}/browser.js\
-	      build/amd.js >> ${DIST}
-	@@echo "})(window);" >> ${DIST}
+	      build/amd-epilogue.js \
+	      | node build/amd-postprocess.js >> ${DIST}
 	@@echo ${DIST} built.
 	
 browser-prepare: less
@@ -94,6 +96,12 @@ alpha: min
 
 beta: min
 
+amd-latest: less
+
+amd-browser-strict: less
+	@@cat ${DIST} | node build/amd-postprocess-browser-strict.js > dist/tmp.js
+	@mv dist/tmp.js ${DIST}
+
 alpha-release: alpha
 	git add dist/*.js
 	git commit -m "Update alpha ${VERSION}"
@@ -108,4 +116,5 @@ stable:
 	npm tag less@${VERSION} stable
 
 
-.PHONY: test benchmark alpha beta latest dist min rhino stable browser-test browser-test-server browser-prepare
+.PHONY: all alpha-release alpha amd-latest amd-browser-strict benchmark beta browser-prepare browser-test-server browser-test dist less min rhino stable test 
+

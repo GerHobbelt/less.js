@@ -1,5 +1,5 @@
 /*
- * LESS - Leaner CSS v1.4.2
+ * LESS - Leaner CSS v
  * http://lesscss.org
  *
  * Copyright (c) 2009-2013, Alexis Sellier
@@ -31,25 +31,29 @@
 
 var less, tree, charset;
 
-if (typeof environment === "object" && ({}).toString.call(environment) === "[object Environment]") {
-    // Rhino
-    // Details on how to detect Rhino: https://github.com/ringo/ringojs/issues/88
-    if (typeof(window) === 'undefined') { less = {}; }
-    else                                { less = window.less = {}; }
-    tree = less.tree = {};
-    less.mode = 'rhino';
-} else if (typeof(window) === 'undefined') {
-    // Node.js
-    less = exports;
-    tree = require('./tree');
-    less.mode = 'node';
-} else {
-    // Browser
-    if (typeof(window.less) === 'undefined') { window.less = {}; }
-    less = window.less;
-    tree = window.less.tree = {};
-    less.mode = 'browser';
-}
+less = {
+    tree: {},
+    mode: 'browser'
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //
 // less.js - parser
 //
@@ -258,9 +262,9 @@ less.Parser = function Parser(env) {
 
     function getDebugInfo(index, inputStream, env) {
         var filename = env.currentFileInfo.filename;
-        if(less.mode !== 'browser' && less.mode !== 'rhino') {
-            filename = require('path').resolve(filename);
-        }
+
+
+
 
         return {
             lineNumber: getLocation(index, inputStream).line + 1,
@@ -455,9 +459,9 @@ less.Parser = function Parser(env) {
                         throw new(LessError)(e, env);
                     }
 
-                    if (options.yuicompress && less.mode === 'node') {
-                        return require('ycssmin').cssmin(css, options.maxLineLen);
-                    } else if (options.compress) {
+
+
+                    if (options.compress) {
                         return css.replace(/(\s)+/g, "$1");
                     } else {
                         return css;
@@ -2020,103 +2024,103 @@ tree.functions = {
 
     "data-uri": function(mimetypeNode, filePathNode) {
 
-        if (typeof window !== 'undefined') {
+
             return new tree.URL(filePathNode || mimetypeNode, this.currentFileInfo).eval(this.env);
         }
 
-        var mimetype = mimetypeNode.value;
-        var filePath = (filePathNode && filePathNode.value);
 
-        var fs = require("fs"),
-            path = require("path"),
-            useBase64 = false;
 
-        if (arguments.length < 2) {
-            filePath = mimetype;
-        }
 
-        if (this.env.isPathRelative(filePath)) {
-            if (this.currentFileInfo.relativeUrls) {
-                filePath = path.join(this.currentFileInfo.currentDirectory, filePath);
-            } else {
-                filePath = path.join(this.currentFileInfo.entryPath, filePath);
-            }
-        }
 
-        // detect the mimetype if not given
-        if (arguments.length < 2) {
-            var mime;
-            try {
-                mime = require('mime');
-            } catch (ex) {
-                mime = tree._mime;
-            }
 
-            mimetype = mime.lookup(filePath);
 
-            // use base 64 unless it's an ASCII or UTF-8 format
-            var charset = mime.charsets.lookup(mimetype);
-            useBase64 = ['US-ASCII', 'UTF-8'].indexOf(charset) < 0;
-            if (useBase64) mimetype += ';base64';
-        }
-        else {
-            useBase64 = /;base64$/.test(mimetype)
-        }
 
-        var buf = fs.readFileSync(filePath);
 
-        // IE8 cannot handle a data-uri larger than 32KB. If this is exceeded
-        // and the --ieCompat flag is enabled, return a normal url() instead.
-        var DATA_URI_MAX_KB = 32,
-            fileSizeInKB = parseInt((buf.length / 1024), 10);
-        if (fileSizeInKB >= DATA_URI_MAX_KB) {
 
-            if (this.env.ieCompat !== false) {
-                if (!this.env.silent) {
-                    console.warn("Skipped data-uri embedding of %s because its size (%dKB) exceeds IE8-safe %dKB!", filePath, fileSizeInKB, DATA_URI_MAX_KB);
-                }
 
-                return new tree.URL(filePathNode || mimetypeNode, this.currentFileInfo).eval(this.env);
-            } else if (!this.env.silent) {
-                // if explicitly disabled (via --no-ie-compat on CLI, or env.ieCompat === false), merely warn
-                console.warn("WARNING: Embedding %s (%dKB) exceeds IE8's data-uri size limit of %dKB!", filePath, fileSizeInKB, DATA_URI_MAX_KB);
-            }
-        }
 
-        buf = useBase64 ? buf.toString('base64')
-                        : encodeURIComponent(buf);
 
-        var uri = "'data:" + mimetype + ',' + buf + "'";
-        return new(tree.URL)(new(tree.Anonymous)(uri));
-    }
-};
 
-// these static methods are used as a fallback when the optional 'mime' dependency is missing
-tree._mime = {
-    // this map is intentionally incomplete
-    // if you want more, install 'mime' dep
-    _types: {
-        '.htm' : 'text/html',
-        '.html': 'text/html',
-        '.gif' : 'image/gif',
-        '.jpg' : 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png' : 'image/png'
-    },
-    lookup: function (filepath) {
-        var ext = require('path').extname(filepath),
-            type = tree._mime._types[ext];
-        if (type === undefined) {
-            throw new Error('Optional dependency "mime" is required for ' + ext);
-        }
-        return type;
-    },
-    charsets: {
-        lookup: function (type) {
-            // assumes all text types are UTF-8
-            return type && (/^text\//).test(type) ? 'UTF-8' : '';
-        }
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 };
 
 var mathFunctions = [{name:"ceil"}, {name:"floor"}, {name: "sqrt"}, {name:"abs"},
@@ -5845,5 +5849,6 @@ function error(e, rootHref) {
 }
 
 
+	return less;
 }));
 
