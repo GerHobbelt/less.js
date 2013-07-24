@@ -1,5 +1,5 @@
 
-all: amd-latest
+all: amd-browser-strict
 
 #
 # Run all tests
@@ -92,8 +92,8 @@ beta: min
 amd-latest: less
 
 amd-browser-strict: less
-	@@cat ${DIST} | node amd-postprocess-browser-strict.js > dist/tmp.js
-	@mv tmp.js ${DIST}
+	@@cat ${DIST} | node build/amd-postprocess-browser-strict.js > dist/tmp.js
+	@mv dist/tmp.js ${DIST}
 
 alpha-release: alpha
 	git add dist/*.js
