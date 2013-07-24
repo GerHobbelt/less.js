@@ -60,6 +60,7 @@ process.stdin.on('end', function() {
 			tree: {},
 			mode: 'browser'
 		};
+		tree = less.tree;
 
 	---
 
@@ -208,9 +209,10 @@ function filter(src) {
 					 "less = {",
 					 "    tree: {},",
 					 "    mode: 'browser'",
-					 "};");
-			l += 4;
-			i += 4;
+					 "};",
+					 "tree = less.tree;");
+			l += 5;
+			i += 5;
 		} else if (state === 2 && s.indexOf("'browser'") > 0) {
 			state = -2;
 		}
