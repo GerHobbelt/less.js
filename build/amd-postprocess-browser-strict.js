@@ -2,16 +2,16 @@
    Postprocess the generated LESS file:
 
    we want to clean it up and thus remove all unnecessary and otherwise
-   cluttering wrapper code, which is only making things harder when we 
+   cluttering wrapper code, which is only making things harder when we
    create LESS as a pure AMD module.
-   
-	   The old way was a hack in that less was always a global and 
-	   a little 'define()' at the end turned the entire thing into 
+
+	   The old way was a hack in that less was always a global and
+	   a little 'define()' at the end turned the entire thing into
 	   a 'also works as AMD module' code chunk, thus allowing people
-	   to circumnavigate the require('less') bit in their own code, 
+	   to circumnavigate the require('less') bit in their own code,
 	   which opens the barn doors to one more spaghetti western.
  */
- 
+
 process.stdin.resume();
 process.stdin.setEncoding('utf8');
 
@@ -53,13 +53,14 @@ process.stdin.on('end', function() {
 		    tree = window.less.tree = {};
 		    less.mode = 'browser';
 		}
-	
+
 	should become
 
 	    less = {
 			tree: {},
 			mode: 'browser'
 		};
+		tree = less.tree;
 
 	---
 
@@ -204,13 +205,14 @@ function filter(src) {
 		if (state === 0 && s.indexOf("(typeof environment === \"object\" &&") > 0) {
 			state = 2;
 
-			a.splice(i, 0, 
+			a.splice(i, 0,
 					 "less = {",
 					 "    tree: {},",
 					 "    mode: 'browser'",
-					 "};");
-			l += 4;
-			i += 4;
+					 "};",
+					 "tree = less.tree;");
+			l += 5;
+			i += 5;
 		} else if (state === 2 && s.indexOf("'browser'") > 0) {
 			state = -2;
 		}
@@ -256,7 +258,7 @@ function filter(src) {
 				// ditch line
 				s = "";
 			}
-		} 
+		}
 		// else: keep line
 
 		a[i] = s;

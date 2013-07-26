@@ -1,0 +1,6 @@
+[submodule "wiki"]
+	path = wiki
+	url = git@github.com:GerHobbelt/less.js.wiki.git
+[submodule "website"]
+	path = website
+	url = git@github.com:GerHobbelt/lesscss.org.git
