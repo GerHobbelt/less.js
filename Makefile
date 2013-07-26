@@ -53,6 +53,7 @@ less:
 	      ${SRC}/visitor.js\
 	      ${SRC}/import-visitor.js\
 	      ${SRC}/join-selector-visitor.js\
+	      ${SRC}/to-css-visitor.js\
 	      ${SRC}/extend-visitor.js\
 	      ${SRC}/browser.js\
 	      build/amd-epilogue.js \
@@ -77,6 +78,7 @@ rhino:
 	      ${SRC}/visitor.js\
 	      ${SRC}/import-visitor.js\
 	      ${SRC}/join-selector-visitor.js\
+	      ${SRC}/to-css-visitor.js\
 	      ${SRC}/extend-visitor.js\
 	      ${SRC}/functions.js\
 	      ${SRC}/colors.js\
