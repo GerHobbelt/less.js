@@ -39,7 +39,7 @@ beta: DIST_MIN := dist/less-${VERSION}-beta.min.js
 version:
 	@echo LESS version: ${VERSION}
 
-less:
+less: setup-build
 	@@mkdir -p dist
 	@@touch ${DIST}
 	@@cat ${HEADER} | sed s/@VERSION/${VERSION}/ > ${DIST}
@@ -61,19 +61,19 @@ less:
 	      | node build/amd-postprocess.js >> ${DIST}
 	@@echo ${DIST} built.
 	
-browser-prepare: less
+browser-prepare: less setup-build
 	node test/browser-test-prepare.js
 	
-browser-test: browser-prepare
+browser-test: browser-prepare setup-build
 	phantomjs test/browser/phantom-runner.js
 
-browser-test-server: browser-prepare
+browser-test-server: browser-prepare setup-build
 	phantomjs test/browser/phantom-runner.js --no-tests
 
-jshint:
+jshint: setup-build
 	node_modules/.bin/jshint --config ./.jshintrc .
 
-test-sourcemaps:
+test-sourcemaps: setup-build
 	node bin/lessc --source-map --source-map-inline test/less/import.less test/sourcemaps/import.css
 	node bin/lessc --source-map --source-map-inline test/less/sourcemaps/basic.less test/sourcemaps/basic.css
 	node node_modules/http-server/bin/http-server test/sourcemaps -p 8083
@@ -97,7 +97,7 @@ rhino:
 	      ${SRC}/rhino.js > ${RHINO}
 	@@echo ${RHINO} built.
 
-min: less
+min: less setup-build
 	@@echo minifying...
 	@@uglifyjs ${DIST} > ${DIST_MIN}
 	@@echo ${DIST_MIN} built.
@@ -127,6 +127,11 @@ dist: min rhino
 stable:
 	npm tag less@${VERSION} stable
 
+setup-build: Makefile package.json
+	@echo "*** Installing NodeJS packages for less ***"
+	npm install
 
-.PHONY: all alpha-release alpha amd-latest amd-browser-strict benchmark beta browser-prepare browser-test-server browser-test dist less min rhino stable test 
+
+
+.PHONY: all alpha-release alpha amd-latest amd-browser-strict benchmark beta browser-prepare browser-test-server browser-test dist less min rhino stable test setup-build
 
