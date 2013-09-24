@@ -19,13 +19,23 @@ lib: lib/less
 # General
 # =================================
 prepend:
-  browser: ['build/require.js', 'build/browser-header.js']
-  rhino:   build/require-rhino.js
+  amd:     
+    - build/amd-prologue.js
+    - build/browser-header.js
+  browser: 
+    - build/require.js
+    - build/browser-header.js
+  rhino:   
+    - build/require-rhino.js
 
 append:
-  amd:     build/amd.js
-  browser: <%= build.lib %>/browser.js
-  rhino:   <%= build.lib %>/rhino.js
+  amd:
+    - <%= build.less.browser %>
+    - build/amd-epilogue.js
+  browser: 
+    - <%= build.less.browser %>
+  rhino:   
+    - <%= build.lib %>/rhino.js
 
 
 # =================================
@@ -48,7 +58,6 @@ less:
   browser          : <%= build.lib %>/browser.js
   source_map_output: <%= build.lib %>/source-map-output.js
 
-
 # =================================
 # Browser build
 # =================================
@@ -57,7 +66,8 @@ less:
 browser:
 
   # prepend utils
-  - <%= build.prepend.browser %>
+  - <%= build.prepend.amd %>
+  # - <%= build.prepend.browser %>
 
   # core
   - <%= build.less.parser %>
