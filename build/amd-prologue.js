@@ -4,13 +4,14 @@
  */
  
 (function ( root, factory ) {
+    /* global module define */
     if ( typeof module === "object" && module.exports ) {
         // Node, or CommonJS-Like environments
         module.exports = function () {
             return factory(root);
-        }
+        };
     } else if ( typeof define === "function" && define.amd ) {
-        // AMD. Register as an anonymous module.
+        // AMD. Register as a named module.
         define("less", [], function () {
             return factory(root);
         });

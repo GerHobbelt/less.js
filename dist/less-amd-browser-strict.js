@@ -1,13 +1,4 @@
 /*
- * LESS - Leaner CSS v1.4.2
- * http://lesscss.org
- *
- * Copyright (c) 2009-2013, Alexis Sellier
- * Licensed under the Apache 2.0 License.
- *
- * @licence
- */
-/*
    AMD prologue: when you are loading this file in a AMD compliant 
    environment, LESS will be an AMD module.
  */
@@ -33,7 +24,8 @@ if (typeof(window.less) === 'undefined' || typeof(window.less.nodeType) !== 'und
 less = window.less;
 tree = window.less.tree = {};
 less.mode = 'browser';
-var less, tree, charset;
+/* global environment, window */
+var less, tree;
 
 less = {
     tree: {},
@@ -130,7 +122,7 @@ less.Parser = function Parser(env) {
 
                 if (e && !parserImports.error) { parserImports.error = e; }
 
-                callback(e, root, importedPreviously);
+                callback(e, root, importedPreviously, fullPath);
             };
 
             if (less.Parser.importer) {
@@ -525,7 +517,8 @@ less.Parser = function Parser(env) {
                                     outputFilename: options.sourceMapOutputFilename,
                                     sourceMapBasepath: options.sourceMapBasepath,
                                     sourceMapRootpath: options.sourceMapRootpath,
-                                    outputSourceFiles: options.outputSourceFiles
+                                    outputSourceFiles: options.outputSourceFiles,
+                                    sourceMapGenerator: options.sourceMapGenerator
                                 });
                         }
 
@@ -584,10 +577,10 @@ less.Parser = function Parser(env) {
                         e = new(LessError)(e, env);
                     }
 
-                    callback(e);
+                    return callback(e);
                 }
                 else {
-                    callback(null, root);
+                    return callback(null, root);
                 }
             };
 
@@ -595,7 +588,7 @@ less.Parser = function Parser(env) {
                 new tree.importVisitor(this.imports, finish)
                     .run(root);
             } else {
-                finish();
+                return finish();
             }
         },
 
@@ -680,16 +673,6 @@ less.Parser = function Parser(env) {
                 return comments;
             },
 
-            comments: function () {
-                var comment, comments = [];
-
-                while(comment = $(this.comment)) {
-                    comments.push(comment);
-                }
-
-                return comments;
-            },
-
             //
             // Entities are tokens which can be found inside an Expression
             //
@@ -721,12 +704,11 @@ less.Parser = function Parser(env) {
                     var k;
 
                     if (k = $(/^[_A-Za-z\-][_A-Za-z0-9\-]*/)) {
-                        if (tree.colors.hasOwnProperty(k)) {
-                            // detect named color
-                            return new(tree.Color)(tree.colors[k].slice(1));
-                        } else {
-                            return new(tree.Keyword)(k);
+                        var color = tree.Color.fromKeyword(k);
+                        if (color) {
+                            return color;
                         }
+                        return new(tree.Keyword)(k);
                     }
                 },
 
@@ -1466,7 +1448,7 @@ less.Parser = function Parser(env) {
                 var e, p, nodes = [];
 
                 do {
-                    if (e = $(this.entities.keyword)) {
+                    if (e = ($(this.entities.keyword) || $(this.entities.variable))) {
                         nodes.push(e);
                     } else if ($('(')) {
                         p = $(this.property);
@@ -1531,7 +1513,7 @@ less.Parser = function Parser(env) {
             //
             directive: function () {
                 var name, value, rules, nonVendorSpecificName,
-                    hasBlock, hasIdentifier, hasExpression;
+                    hasBlock, hasIdentifier, hasExpression, identifier;
 
                 if (input.charAt(i) !== '@') { return; }
 
@@ -1573,6 +1555,7 @@ less.Parser = function Parser(env) {
                     case "@right-bottom":
                         hasBlock = true;
                         break;
+                    case "@host":
                     case "@page":
                     case "@document":
                     case "@supports":
@@ -1586,7 +1569,10 @@ less.Parser = function Parser(env) {
                 }
 
                 if (hasIdentifier) {
-                    name += " " + ($(/^[^{]+/) || '').trim();
+                    identifier = ($(/^[^{]+/) || '').trim();
+                    if (identifier) {
+                        name += " " + identifier;
+                    }
                 }
 
                 if (hasBlock)
@@ -1691,7 +1677,7 @@ less.Parser = function Parser(env) {
                 if ($(/^not/)) { negate = true; }
                 expect('(');
                 if (a = $(this.addition) || $(this.entities.keyword) || $(this.entities.quoted)) {
-                    if (op = $(/^(?:>=|=<|[<=>])/)) {
+                    if (op = $(/^(?:>=|<=|=<|[<=>])/)) {
                         if (b = $(this.addition) || $(this.entities.keyword) || $(this.entities.quoted)) {
                             c = new(tree.Condition)(op, a, b, index, negate);
                         } else {
@@ -1779,6 +1765,14 @@ tree.functions = {
         return this.hsla(h, s, l, 1.0);
     },
     hsla: function (h, s, l, a) {
+        function hue(h) {
+            h = h < 0 ? h + 1 : (h > 1 ? h - 1 : h);
+            if      (h * 6 < 1) { return m1 + (m2 - m1) * h * 6; }
+            else if (h * 2 < 1) { return m2; }
+            else if (h * 3 < 2) { return m1 + (m2 - m1) * (2/3 - h) * 6; }
+            else                { return m1; }
+        }
+
         h = (number(h) % 360) / 360;
         s = clamp(number(s)); l = clamp(number(l)); a = clamp(number(a));
 
@@ -1789,14 +1783,6 @@ tree.functions = {
                          hue(h)       * 255,
                          hue(h - 1/3) * 255,
                          a);
-
-        function hue(h) {
-            h = h < 0 ? h + 1 : (h > 1 ? h - 1 : h);
-            if      (h * 6 < 1) { return m1 + (m2 - m1) * h * 6; }
-            else if (h * 2 < 1) { return m2; }
-            else if (h * 3 < 2) { return m1 + (m2 - m1) * (2/3 - h) * 6; }
-            else                { return m1; }
-        }
     },
 
     hsv: function(h, s, v) {
@@ -1999,6 +1985,9 @@ tree.functions = {
         return new(tree.Quoted)('"' + str + '"', str);
     },
     unit: function (val, unit) {
+        if(!(val instanceof tree.Dimension)) {
+            throw { type: "Argument", message: "the first argument to unit must be a number" + (val instanceof tree.Operation ? ". Have you forgotten parenthesis?" : "") };
+        }
         return new(tree.Dimension)(val.value, unit ? unit.toCSS() : "");
     },
     convert: function (val, unit) {
@@ -2086,7 +2075,16 @@ tree.functions = {
     },
     color: function (n) {
         if (n instanceof tree.Quoted) {
-            return new(tree.Color)(n.value.slice(1));
+            var colorCandidate = n.value,
+                returnColor;
+            returnColor = tree.Color.fromKeyword(colorCandidate);
+            if (returnColor) {
+                return returnColor;
+            }
+            if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/.test(colorCandidate)) {
+                return new(tree.Color)(colorCandidate.slice(1));
+            }
+            throw { type: "Argument", message: "argument must be a color keyword or 3/6 digit hex e.g. #FFF" };
         } else {
             throw { type: "Argument", message: "argument must be a string" };
         }
@@ -2197,9 +2195,6 @@ tree.functions = {
 
             return new tree.URL(filePathNode || mimetypeNode, this.currentFileInfo).eval(this.env);
         }
-
-
-
 
 
 
@@ -2567,7 +2562,6 @@ tree.functionCall.prototype = tree.functions;
         'teal':'#008080',
         'thistle':'#d8bfd8',
         'tomato':'#ff6347',
-        // 'transparent':'rgba(0,0,0,0)',
         'turquoise':'#40e0d0',
         'violet':'#ee82ee',
         'wheat':'#f5deb3',
@@ -2576,6 +2570,84 @@ tree.functionCall.prototype = tree.functions;
         'yellow':'#ffff00',
         'yellowgreen':'#9acd32'
     };
+
+
+
+tree.debugInfo = function(env, ctx, lineSeperator) {
+    var result="";
+    if (env.dumpLineNumbers && !env.compress) {
+        switch(env.dumpLineNumbers) {
+            case 'comments':
+                result = tree.debugInfo.asComment(ctx);
+                break;
+            case 'mediaquery':
+                result = tree.debugInfo.asMediaQuery(ctx);
+                break;
+            case 'all':
+                result = tree.debugInfo.asComment(ctx) + (lineSeperator || "") + tree.debugInfo.asMediaQuery(ctx);
+                break;
+        }
+    }
+    return result;
+};
+
+tree.debugInfo.asComment = function(ctx) {
+    return '/* line ' + ctx.debugInfo.lineNumber + ', ' + ctx.debugInfo.fileName + ' */\n';
+};
+
+tree.debugInfo.asMediaQuery = function(ctx) {
+    return '@media -sass-debug-info{filename{font-family:' +
+        ('file://' + ctx.debugInfo.fileName).replace(/([.:\/\\])/g, function (a) {
+            if (a == '\\') {
+                a = '\/';
+            }
+            return '\\' + a;
+        }) +
+        '}line{font-family:\\00003' + ctx.debugInfo.lineNumber + '}}\n';
+};
+
+tree.find = function (obj, fun) {
+    for (var i = 0, r; i < obj.length; i++) {
+        if (r = fun.call(obj, obj[i])) { return r; }
+    }
+    return null;
+};
+
+tree.jsify = function (obj) {
+    if (Array.isArray(obj.value) && (obj.value.length > 1)) {
+        return '[' + obj.value.map(function (v) { return v.toCSS(false); }).join(', ') + ']';
+    } else {
+        return obj.toCSS(false);
+    }
+};
+
+tree.toCSS = function (env) {
+    var strs = [];
+    this.genCSS(env, {
+        add: function(chunk, fileInfo, index) {
+            strs.push(chunk);
+        },
+        isEmpty: function () {
+            return strs.length === 0;
+        }
+    });
+    return strs.join('');
+};
+
+tree.outputRuleset = function (env, output, rules) {
+    output.add((env.compress ? '{' : ' {\n'));
+    env.tabLevel = (env.tabLevel || 0) + 1;
+    var tabRuleStr = env.compress ? '' : Array(env.tabLevel + 1).join("  "),
+        tabSetStr = env.compress ? '' : Array(env.tabLevel).join("  ");
+    for(var i = 0; i < rules.length; i++) {
+        output.add(tabRuleStr);
+        rules[i].genCSS(env, output);
+        output.add(env.compress ? '' : '\n');
+    }
+    env.tabLevel--;
+    output.add(tabSetStr + "}");
+};
+
 
 
 
@@ -2608,8 +2680,11 @@ tree.Alpha.prototype = {
 
 
 
-tree.Anonymous = function (string) {
+tree.Anonymous = function (string, index, currentFileInfo, mapLines) {
     this.value = string.value || string;
+    this.index = index;
+    this.mapLines = mapLines;
+    this.currentFileInfo = currentFileInfo;
 };
 tree.Anonymous.prototype = {
     type: "Anonymous",
@@ -2629,7 +2704,7 @@ tree.Anonymous.prototype = {
         return left < right ? -1 : 1;
     },
     genCSS: function (env, output) {
-        output.add(this.value);
+        output.add(this.value, this.currentFileInfo, this.index, this.mapLines);
     },
     toCSS: tree.toCSS
 };
@@ -2758,6 +2833,9 @@ tree.Color = function (rgb, a) {
     }
     this.alpha = typeof(a) === 'number' ? a : 1;
 };
+
+var transparentKeyword = "transparent";
+
 tree.Color.prototype = {
     type: "Color",
     eval: function () { return this; },
@@ -2774,6 +2852,9 @@ tree.Color.prototype = {
         // which has better compatibility with older browsers.
         // Values are capped between `0` and `255`, rounded and zero-padded.
         if (this.alpha < 1.0) {
+            if (this.alpha === 0 && this.isTransparentKeyword) {
+                return transparentKeyword;
+            }
             return "rgba(" + this.rgb.map(function (c) {
                 return Math.round(c);
             }).concat(this.alpha).join(',' + (compress ? '' : ' ')) + ")";
@@ -2892,6 +2973,18 @@ tree.Color.prototype = {
     }
 };
 
+tree.Color.fromKeyword = function(keyword) {
+    if (tree.colors.hasOwnProperty(keyword)) {
+        // detect named color
+        return new(tree.Color)(tree.colors[keyword].slice(1));
+    }
+    if (keyword === transparentKeyword) {
+        var transparent = new(tree.Color)([0, 0, 0], 0);
+        transparent.isTransparentKeyword = true;
+        return transparent;
+    }
+};
+
 
 
 
@@ -2961,8 +3054,8 @@ tree.Condition.prototype = {
                                 index: i };
                     }
                     switch (result) {
-                        case -1: return op === '<' || op === '=<';
-                        case  0: return op === '=' || op === '>=' || op === '=<';
+                        case -1: return op === '<' || op === '=<' || op === '<=';
+                        case  0: return op === '=' || op === '>=' || op === '=<' || op === '<=';
                         case  1: return op === '>' || op === '>=';
                     }
             }
@@ -3009,8 +3102,7 @@ tree.Dimension.prototype = {
 
         if (env && env.compress) {
             // Zero values doesn't need a unit
-            // keep units on durations to deal with firefox bug
-            if (value === 0 && !(this.unit.isAngle() || this.unit.isDuration())) {
+            if (value === 0 && this.unit.isLength()) {
                 output.add(strValue);
                 return;
             }
@@ -3193,12 +3285,8 @@ tree.Unit.prototype = {
         return this.toString() === unitString;
     },
 
-    isAngle: function () {
-        return tree.UnitConversions.angle.hasOwnProperty(this.toCSS());
-    },
-
-    isDuration: function () {
-      return tree.UnitConversions.duration.hasOwnProperty(this.toCSS());
+    isLength: function () {
+        return Boolean(this.toCSS().match(/px|em|%|in|cm|mm|pc|pt|ex/));
     },
 
     isEmpty: function () {
@@ -3627,13 +3715,18 @@ tree.Import.prototype = {
     evalPath: function (env) {
         var path = this.path.eval(env);
         var rootpath = this.currentFileInfo && this.currentFileInfo.rootpath;
-        if (rootpath && !(path instanceof tree.URL)) {
-            var pathValue = path.value;
-            // Add the base path if the import is relative
-            if (pathValue && env.isPathRelative(pathValue)) {
-                path.value =  rootpath + pathValue;
+
+        if (!(path instanceof tree.URL)) {
+            if (rootpath) {
+                var pathValue = path.value;
+                // Add the base path if the import is relative
+                if (pathValue && env.isPathRelative(pathValue)) {
+                    path.value = rootpath + pathValue;
+                }
             }
+            path.value = env.normalizePath(path.value);
         }
+
         return path;
     },
     eval: function (env) {
@@ -3642,7 +3735,8 @@ tree.Import.prototype = {
         if (this.skip) { return []; }
 
         if (this.options.inline) {
-            var contents = new(tree.Anonymous)(this.root);
+            //todo needs to reference css file not import
+            var contents = new(tree.Anonymous)(this.root, 0, {filename: this.importedFilename}, true);
             return this.features ? new(tree.Media)([contents], this.features.value) : [contents];
         } else if (this.css) {
             var newImport = new(tree.Import)(this.evalPath(env), features, this.options, this.index);
@@ -3682,7 +3776,7 @@ tree.JavaScript.prototype = {
         try {
             expression = new(Function)('return (' + expression + ');');
         } catch (e) {
-            throw { message: "JavaScript evaluation error: `" + expression + "`" ,
+            throw { message: "JavaScript evaluation error: " + e.message + " from `" + expression + "`" ,
                     index: this.index };
         }
 
@@ -3926,8 +4020,19 @@ tree.mixin.Call.prototype = {
                     if (mixin.matchArgs(args, env)) {
                         if (!mixin.matchCondition || mixin.matchCondition(args, env)) {
                             try {
+                                if (!(mixin instanceof tree.mixin.Definition)) {
+                                    mixin = new tree.mixin.Definition("", [], mixin.rules, null, false);
+                                    mixin.originalRuleset = mixins[m].originalRuleset || mixins[m];
+                                }
+                                //if (this.important) {
+                                //    isImportant = env.isImportant;
+                                //    env.isImportant = true;
+                                //}
                                 Array.prototype.push.apply(
                                       rules, mixin.eval(env, args, this.important).rules);
+                                //if (this.important) {
+                                //    env.isImportant = isImportant;
+                                //}
                             } catch (e) {
                                 throw { message: e.message, index: this.index, filename: this.currentFileInfo.filename, stack: e.stack };
                             }
@@ -4084,20 +4189,22 @@ tree.mixin.Definition.prototype = {
 
         frame.rules.unshift(new(tree.Rule)('@arguments', new(tree.Expression)(_arguments).eval(env)));
 
-        rules = important ?
-            this.parent.makeImportant.apply(this).rules : this.rules.slice(0);
+        rules = this.rules.slice(0);
 
-        ruleset = new(tree.Ruleset)(null, rules).eval(new(tree.evalEnv)(env,
-                                                    [this, frame].concat(mixinFrames)));
+        ruleset = new(tree.Ruleset)(null, rules);
         ruleset.originalRuleset = this;
+        ruleset = ruleset.eval(new(tree.evalEnv)(env, [this, frame].concat(mixinFrames)));
+        if (important) {
+            ruleset = this.parent.makeImportant.apply(ruleset);
+        }
         return ruleset;
     },
     matchCondition: function (args, env) {
-
         if (this.condition && !this.condition.eval(
             new(tree.evalEnv)(env,
-                [this.evalParams(env, new(tree.evalEnv)(env, this.frames.concat(env.frames)), args, [])]
-                    .concat(env.frames)))) {
+                [this.evalParams(env, new(tree.evalEnv)(env, this.frames.concat(env.frames)), args, [])] // the parameter variables
+                    .concat(this.frames) // the parent namespace/mixin frames
+                    .concat(env.frames)))) { // the current environment frames
             return false;
         }
         return true;
@@ -4108,7 +4215,8 @@ tree.mixin.Definition.prototype = {
         if (! this.variadic) {
             if (argsLength < this.required)                               { return false; }
             if (argsLength > this.params.length)                          { return false; }
-            if ((this.required > 0) && (argsLength > this.params.length)) { return false; }
+        } else {
+            if (argsLength < (this.required - 1))                         { return false; }
         }
 
         len = Math.min(argsLength, this.arity);
@@ -4566,7 +4674,7 @@ tree.Ruleset.prototype = {
                 path = this.paths[i];
                 env.firstSelector = true;
                 for(j = 0; j < path.length; j++) {
-                    output.add(path[j].genCSS(env, output));
+                    path[j].genCSS(env, output);
                     env.firstSelector = false;
                 }
                 if (i + 1 < this.paths.length) {
@@ -4581,12 +4689,14 @@ tree.Ruleset.prototype = {
         for (i = 0; i < ruleNodes.length; i++) {
             rule = ruleNodes[i];
 
-            if (i + 1 === ruleNodes.length) {
+            // @page{ directive ends up with root elements inside it, a mix of rules and rulesets
+            // In this instance we do not know whether it is the last property
+            if (i + 1 === ruleNodes.length && (!this.root || rulesetNodes.length === 0 || this.firstRoot)) {
                 env.lastRule = true;
             }
 
-            if (rule.toCSS) {
-                output.add(rule.genCSS(env, output));
+            if (rule.genCSS) {
+                rule.genCSS(env, output);
             } else if (rule.value) {
                 output.add(rule.value.toString());
             }
@@ -4605,16 +4715,18 @@ tree.Ruleset.prototype = {
 
         for (i = 0; i < rulesetNodes.length; i++) {
             if (ruleNodes.length && firstRuleset) {
-                output.add("\n" + (this.root ? tabRuleStr : tabSetStr));
+                output.add((env.compress ? "" : "\n") + (this.root ? tabRuleStr : tabSetStr));
             }
             if (!firstRuleset) {
-                output.add('\n' + (this.root ? tabRuleStr : tabSetStr));
+                output.add((env.compress ? "" : "\n") + (this.root ? tabRuleStr : tabSetStr));
             }
             firstRuleset = false;
-            output.add(rulesetNodes[i].genCSS(env, output));
+            rulesetNodes[i].genCSS(env, output);
         }
 
-        output.add(!env.compress && this.firstRoot ? '\n' : '');
+        if (!output.isEmpty() && !env.compress && this.firstRoot) {
+            output.add('\n');
+        }
     },
 
     toCSS: tree.toCSS,
@@ -4924,6 +5036,8 @@ tree.URL.prototype = {
             val.value = rootpath + val.value;
         }
 
+        val.value = ctx.normalizePath(val.value);
+
         return new(tree.URL)(val, null);
     }
 };
@@ -5006,81 +5120,6 @@ tree.Variable.prototype = {
 
 
 
-tree.debugInfo = function(env, ctx, lineSeperator) {
-    var result="";
-    if (env.dumpLineNumbers && !env.compress) {
-        switch(env.dumpLineNumbers) {
-            case 'comments':
-                result = tree.debugInfo.asComment(ctx);
-                break;
-            case 'mediaquery':
-                result = tree.debugInfo.asMediaQuery(ctx);
-                break;
-            case 'all':
-                result = tree.debugInfo.asComment(ctx) + (lineSeperator || "") + tree.debugInfo.asMediaQuery(ctx);
-                break;
-        }
-    }
-    return result;
-};
-
-tree.debugInfo.asComment = function(ctx) {
-    return '/* line ' + ctx.debugInfo.lineNumber + ', ' + ctx.debugInfo.fileName + ' */\n';
-};
-
-tree.debugInfo.asMediaQuery = function(ctx) {
-    return '@media -sass-debug-info{filename{font-family:' +
-        ('file://' + ctx.debugInfo.fileName).replace(/([.:\/\\])/g, function (a) {
-            if (a == '\\') {
-                a = '\/';
-            }
-            return '\\' + a;
-        }) +
-        '}line{font-family:\\00003' + ctx.debugInfo.lineNumber + '}}\n';
-};
-
-tree.find = function (obj, fun) {
-    for (var i = 0, r; i < obj.length; i++) {
-        if (r = fun.call(obj, obj[i])) { return r; }
-    }
-    return null;
-};
-
-tree.jsify = function (obj) {
-    if (Array.isArray(obj.value) && (obj.value.length > 1)) {
-        return '[' + obj.value.map(function (v) { return v.toCSS(false); }).join(', ') + ']';
-    } else {
-        return obj.toCSS(false);
-    }
-};
-
-tree.toCSS = function (env) {
-    var strs = [];
-    this.genCSS(env, {
-        add: function(chunk, node) {
-            strs.push(chunk);
-        }
-    });
-    return strs.join('');
-};
-
-tree.outputRuleset = function (env, output, rules) {
-    output.add((env.compress ? '{' : ' {\n'));
-    env.tabLevel = (env.tabLevel || 0) + 1;
-    var tabRuleStr = env.compress ? '' : Array(env.tabLevel + 1).join("  "),
-        tabSetStr = env.compress ? '' : Array(env.tabLevel).join("  ");
-    for(var i = 0; i < rules.length; i++) {
-        output.add(tabRuleStr);
-        rules[i].genCSS(env, output);
-        output.add(env.compress ? '' : '\n');
-    }
-    env.tabLevel--;
-    output.add(tabSetStr + "}");
-};
-
-
-
-
     var parseCopyProperties = [
         'paths',            // option - unmodified - paths to search for imports on
         'optimization',     // option - optimization level (for the chunker)
@@ -5089,6 +5128,7 @@ tree.outputRuleset = function (env, output, rules) {
         'relativeUrls',     // option - whether to adjust URL's to be relative
         'rootpath',         // option - rootpath to append to URL's
         'strictImports',    // option -
+        'insecure',         // option - whether to allow imports from insecure ssl hosts
         'dumpLineNumbers',  // option - whether to dump line numbers
         'compress',         // option - whether to compress
         'processImports',   // option - whether to process imports. if false then imports will not be imported
@@ -5168,6 +5208,33 @@ tree.outputRuleset = function (env, output, rules) {
         return !/^(?:[a-z\-]+:|\/)/.test(path);
     };
 
+    tree.evalEnv.prototype.normalizePath = function( path ) {
+        var
+          segments = path.split("/").reverse(),
+          segment;
+
+        path = [];
+        while (segments.length !== 0 ) {
+            segment = segments.pop();
+            switch( segment ) {
+                case ".":
+                    break;
+                case "..":
+                    if ((path.length === 0) || (path[path.length - 1] === "..")) {
+                        path.push( segment );
+                    } else {
+                        path.pop();
+                    }
+                    break;
+                default:
+                    path.push( segment );
+                    break;
+            }
+        }
+
+        return path.join("/");
+    };
+
     //todo - do the same for the toCSS env
     //tree.toCSSEnv = function (options) {
     //};
@@ -5181,6 +5248,7 @@ tree.outputRuleset = function (env, output, rules) {
             }
         }
     };
+
 
 
 
@@ -5299,7 +5367,7 @@ tree.outputRuleset = function (env, output, rules) {
                     this.importCount++;
                     var env = new tree.evalEnv(this.env, this.env.frames.slice(0));
 
-                    this._importer.push(importNode.getPath(), importNode.currentFileInfo, importNode.options, function (e, root, imported) {
+                    this._importer.push(importNode.getPath(), importNode.currentFileInfo, importNode.options, function (e, root, imported, fullPath) {
                         if (e && !e.filename) { e.index = importNode.index; e.filename = importNode.currentFileInfo.filename; }
                         if (imported && !importNode.options.multiple) { importNode.skip = imported; }
 
@@ -5313,6 +5381,7 @@ tree.outputRuleset = function (env, output, rules) {
 
                         if (root) {
                             importNode.root = root;
+                            importNode.importedFilename = fullPath;
                             if (!inlineCSS && !importNode.skip) {
                                 new(tree.importVisitor)(importVisitor._importer, subFinish, env)
                                     .run(root);
@@ -5928,7 +5997,8 @@ tree.outputRuleset = function (env, output, rules) {
                 matchIndex,
                 selector,
                 firstElement,
-                match;
+                match,
+                newElements;
 
             for (matchIndex = 0; matchIndex < matches.length; matchIndex++) {
                 match = matches[matchIndex];
@@ -5946,17 +6016,24 @@ tree.outputRuleset = function (env, output, rules) {
                     currentSelectorPathIndex++;
                 }
 
-                path = path.concat(selectorPath.slice(currentSelectorPathIndex, match.pathIndex));
+                newElements = selector.elements
+                    .slice(currentSelectorPathElementIndex, match.index)
+                    .concat([firstElement])
+                    .concat(replacementSelector.elements.slice(1));
 
-                path.push(new tree.Selector(
-                    selector.elements
-                        .slice(currentSelectorPathElementIndex, match.index)
-                        .concat([firstElement])
-                        .concat(replacementSelector.elements.slice(1))
-                ));
+                if (currentSelectorPathIndex === match.pathIndex && matchIndex > 0) {
+                    path[path.length - 1].elements =
+                        path[path.length - 1].elements.concat(newElements);
+                } else {
+                    path = path.concat(selectorPath.slice(currentSelectorPathIndex, match.pathIndex));
+
+                    path.push(new tree.Selector(
+                        newElements
+                    ));
+                }
                 currentSelectorPathIndex = match.endPathIndex;
                 currentSelectorPathElementIndex = match.endPathElementIndex;
-                if (currentSelectorPathElementIndex >= selector.elements.length) {
+                if (currentSelectorPathElementIndex >= selectorPath[currentSelectorPathIndex].elements.length) {
                     currentSelectorPathElementIndex = 0;
                     currentSelectorPathIndex++;
                 }
@@ -5993,11 +6070,10 @@ tree.outputRuleset = function (env, output, rules) {
     };
 
 
-
 //
 // browser.js - client-side engine
 //
-/*global less */
+/*global less, window, document, XMLHttpRequest, location */
 
 var isFileProtocol = /^(file|chrome(-extension)?|resource|qrc|app):/.test(location.protocol);
 
@@ -6008,12 +6084,18 @@ less.env = less.env || (location.hostname == '127.0.0.1' ||
                         isFileProtocol                   ? 'development'
                                                          : 'production');
 
+var logLevel = {
+    info: 2,
+    errors: 1,
+    none: 0
+};
+
 // The amount of logging in the javascript console.
 // 2 - Information and errors
 // 1 - Errors
 // 0 - None
 // Defaults to 2
-less.log_level = typeof(less.log_level) != 'undefined' ? less.log_level : 2;
+less.logLevel = typeof(less.logLevel) != 'undefined' ? less.logLevel : logLevel.info;
 
 // Load styles asynchronously (default: false)
 //
@@ -6039,343 +6121,49 @@ if (dumpLineNumbers) {
     less.dumpLineNumbers = dumpLineNumbers[1];
 }
 
-//
-// Watch mode
-//
-less.watch   = function () {
-    if (!less.watchMode ){
-        less.env = 'development';
-         initRunningMode();
-    }
-    return this.watchMode = true; 
-};
-
-less.unwatch = function () {
-    clearInterval(less.watchTimer); 
-    return this.watchMode = false; 
-};
-
-function initRunningMode(){
-    if (less.env === 'development') {
-        less.optimization = 0;
-        less.watchTimer = setInterval(function () {
-            if (less.watchMode) {
-                loadStyleSheets(function (e, root, _, sheet, env) {
-                    if (e) {
-                        error(e, sheet.href);
-                    } else if (root) {
-                        createCSS(root.toCSS(less), sheet, env.lastModified);
-                    }
-                });
-            }
-        }, less.poll);
-    } else {
-        less.optimization = 3;
-    }
-}
-
-if (/!watch/.test(location.hash)) {
-    less.watch();
-}
-
-var cache = null;
-
-if (less.env != 'development') {
-    try {
-        cache = (typeof(window.localStorage) === 'undefined') ? null : window.localStorage;
-    } catch (_) {}
-}
-
-//
-// Get all <link> tags with the 'rel' attribute set to "stylesheet/less"
-//
-var links = document.getElementsByTagName('link');
 var typePattern = /^text\/(x-)?less$/;
-
-less.sheets = [];
-
-for (var i = 0; i < links.length; i++) {
-    if (links[i].rel === 'stylesheet/less' || (links[i].rel.match(/stylesheet/) &&
-       (links[i].type.match(typePattern)))) {
-        less.sheets.push(links[i]);
-    }
-}
-
-//
-// With this function, it's possible to alter variables and re-render
-// CSS without reloading less-files
-//
+var cache = null;
 var fileCache = {};
-less.modifyVars = function(record) {
-    var newVars = "";
-    for (var name in record) {
-        newVars += ((name.slice(0,1) === '@')? '' : '@') + name +': '+
-                ((record[name].slice(-1) === ';')? record[name] : record[name] +';');
-    }
-    less.refresh(false, newVars);
-};
 
-less.refresh = function (reload, newVars) {
-    var startTime, endTime;
-    startTime = endTime = new Date();
-
-    loadStyleSheets(function (e, root, _, sheet, env) {
-        if (e) {
-            return error(e, sheet.href);
-        }
-        if (env.local) {
-            log("loading " + sheet.href + " from cache.", 2);
-        } else {
-            log("parsed " + sheet.href + " successfully.", 2);
-            createCSS(root.toCSS(less), sheet, env.lastModified);
-        }
-        var t = new Date();
-        log("css for " + sheet.href + " generated in " + (t - endTime) + 'ms', 2);
-        (env.remaining === 0) && log("css generated in " + (t - startTime) + 'ms', 2);
-        endTime = t;
-    }, reload, newVars);
-
-    loadStyles(newVars);
-};
-less.refreshStyles = loadStyles;
-
-function loadStyles(newVars) {
-    var styles = document.getElementsByTagName('style'),
-        style;
-    for (var i = 0; i < styles.length; i++) {
-        style = styles[i];
-        if (style.type.match(typePattern)) {
-            var env = new less.tree.parseEnv(less),
-                lessText = style.innerHTML || '';
-            env.filename = document.location.href.replace(/#.*$/, '');
-            if (newVars) {
-                env.useFileCache = true;
-                lessText += "\n" + newVars;
-            }
-
-            /*jshint loopfunc:true */
-            // use closure to store current value of i
-            var callback = (function(style) {
-                return function (e, cssAST) {
-                    if (e) {
-                        return error(e, "inline");
-                    }
-                    var css = cssAST.toCSS(less);
-                    style.type = 'text/css';
-                    if (style.styleSheet) {
-                        style.styleSheet.cssText = css;
-                    } else {
-                        style.innerHTML = css;
-                    }
-                };
-            })(style);
-            new(less.Parser)(env).parse(lessText, callback);
-        }
+function log(str, level) {
+    if (less.env == 'development' && typeof(console) !== 'undefined' && less.logLevel >= level) {
+        console.log('less: ' + str);
     }
 }
-
-function loadStyleSheets(callback, reload, newVars) {
-    for (var i = 0; i < less.sheets.length; i++) {
-        loadStyleSheet(less.sheets[i], callback, reload, less.sheets.length - (i + 1), newVars);
-    }
-}
-
-function pathDiff(url, baseUrl) {
-    // diff between two paths to create a relative path
-
-    var urlParts = extractUrlParts(url),
-        baseUrlParts = extractUrlParts(baseUrl),
-        i, max, urlDirectories, baseUrlDirectories, diff = "";
-    if (urlParts.hostPart !== baseUrlParts.hostPart) {
-        return "";
-    }
-    max = Math.max(baseUrlParts.directories.length, urlParts.directories.length);
-    for(i = 0; i < max; i++) {
-        if (baseUrlParts.directories[i] !== urlParts.directories[i]) { break; }
-    }
-    baseUrlDirectories = baseUrlParts.directories.slice(i);
-    urlDirectories = urlParts.directories.slice(i);
-    for(i = 0; i < baseUrlDirectories.length-1; i++) {
-        diff += "../";
-    }
-    for(i = 0; i < urlDirectories.length-1; i++) {
-        diff += urlDirectories[i] + "/";
-    }
-    return diff;
-}
-
-function extractUrlParts(url, baseUrl) {
-    // urlParts[1] = protocol&hostname || /
-    // urlParts[2] = / if path relative to host base
-    // urlParts[3] = directories
-    // urlParts[4] = filename
-    // urlParts[5] = parameters
-
-    var urlPartsRegex = /^((?:[a-z\-]+:)?\/+?(?:[^\/\?#]*\/)|([\/\\]))?((?:[^\/\\\?#]*[\/\\])*)([^\/\\\?#]*)([#\?].*)?$/i,
-        urlParts = url.match(urlPartsRegex),
-        returner = {}, directories = [], i, baseUrlParts;
-
-    if (!urlParts) {
-        throw new Error("Could not parse sheet href - '"+url+"'");
-    }
-
-    // Stylesheets in IE don't always return the full path
-    if (!urlParts[1] || urlParts[2]) {
-        baseUrlParts = baseUrl.match(urlPartsRegex);
-        if (!baseUrlParts) {
-            throw new Error("Could not parse page url - '"+baseUrl+"'");
-        }
-        urlParts[1] = urlParts[1] || baseUrlParts[1] || "";
-        if (!urlParts[2]) {
-            urlParts[3] = baseUrlParts[3] + urlParts[3];
-        }
-    }
-
-    if (urlParts[3]) {
-        directories = urlParts[3].replace(/\\/g, "/").split("/");
-
-        // extract out . before .. so .. doesn't absorb a non-directory
-        for(i = 0; i < directories.length; i++) {
-            if (directories[i] === ".") {
-                directories.splice(i, 1);
-                i -= 1;
-            }
-        }
-
-        for(i = 0; i < directories.length; i++) {
-            if (directories[i] === ".." && i > 0) {
-                directories.splice(i-1, 2);
-                i -= 2;
-            }
-        }
-    }
-
-    returner.hostPart = urlParts[1];
-    returner.directories = directories;
-    returner.path = urlParts[1] + directories.join("/");
-    returner.fileUrl = returner.path + (urlParts[4] || "");
-    returner.url = returner.fileUrl + (urlParts[5] || "");
-    return returner;
-}
-
-function loadStyleSheet(sheet, callback, reload, remaining, newVars) {
-
-    var env = new less.tree.parseEnv(less);
-    env.mime = sheet.type;
-
-    if (newVars) {
-        env.useFileCache = true;
-    }
-
-    loadFile(sheet.href, null, function(e, data, path, newFileInfo, webInfo) {
-
-        if (webInfo) {
-            webInfo.remaining = remaining;
-
-            var css       = cache && cache.getItem(path),
-                timestamp = cache && cache.getItem(path + ':timestamp');
-
-            if (!reload && timestamp && webInfo.lastModified &&
-                (new(Date)(webInfo.lastModified).valueOf() ===
-                    new(Date)(timestamp).valueOf())) {
-                // Use local copy
-                createCSS(css, sheet);
-                webInfo.local = true;
-                callback(null, null, data, sheet, webInfo, path);
-                return;
-            }
-        }
-
-        //TODO add tests around how this behaves when reloading
-        removeNode(document.getElementById('less-error-message:' + extractId(path)));
-
-        if (data) {
-            env.currentFileInfo = newFileInfo;
-            new(less.Parser)(env).parse(data, function (e, root) {
-                if (e) { return callback(e, null, null, sheet); }
-                try {
-                    callback(e, root, data, sheet, webInfo, path);
-                } catch (e) {
-                    callback(e, null, null, sheet);
-                }
-            });
-        } else {
-            callback(e, null, null, sheet, webInfo, path);
-        }
-    }, env, newVars);
-}
-
-function loadFile(originalHref, currentFileInfo, callback, env, newVars) {
-
-    if (currentFileInfo && currentFileInfo.currentDirectory && !/^([a-z-]+:)?\//.test(originalHref)) {
-        originalHref = currentFileInfo.currentDirectory + originalHref;
-    }
-
-    // sheet may be set to the stylesheet for the initial load or a collection of properties including
-    // some env variables for imports
-    var hrefParts = extractUrlParts(originalHref, window.location.href);
-    var href      = hrefParts.url;
-    var newFileInfo = {
-            currentDirectory: hrefParts.path,
-            filename: href
-        };
-
-    if (currentFileInfo) {
-        newFileInfo.entryPath = currentFileInfo.entryPath;
-        newFileInfo.rootpath = currentFileInfo.rootpath;
-        newFileInfo.rootFilename = currentFileInfo.rootFilename;
-        newFileInfo.relativeUrls = currentFileInfo.relativeUrls;
-    } else {
-        newFileInfo.entryPath = hrefParts.path;
-        newFileInfo.rootpath = less.rootpath || hrefParts.path;
-        newFileInfo.rootFilename = href;
-        newFileInfo.relativeUrls = env.relativeUrls;
-    }
-
-    if (newFileInfo.relativeUrls) {
-        if (env.rootpath) {
-            newFileInfo.rootpath = extractUrlParts(env.rootpath + pathDiff(hrefParts.path, newFileInfo.entryPath)).path;
-        } else {
-            newFileInfo.rootpath = hrefParts.path;
-        }
-    }
-
-    if (env.useFileCache && fileCache[href]) {
-        try {
-            var lessText = fileCache[href];
-            if (newVars) {
-                lessText += "\n" + newVars;
-            }
-            callback(null, lessText, href, newFileInfo, { lastModified: new Date() });
-        } catch (e) {
-            callback(e, null, href);
-        }
-        return;
-    }
-
-    doXHR(href, env.mime, function (data, lastModified) {
-        // per file cache
-        fileCache[href] = data;
-
-        // Use remote copy (re-parse)
-        try {
-            callback(null, data, href, newFileInfo, { lastModified: lastModified });
-        } catch (e) {
-            callback(e, null, href);
-        }
-    }, function (status, url) {
-        callback({ type: 'File', message: "'" + url + "' wasn't found (" + status + ")" }, null, href);
-    });
-}
-
-less.Parser.fileLoader = loadFile;
 
 function extractId(href) {
-    return href.replace(/^[a-z\-]+:\/+?[^\/]+/, '' )  // Remove protocol & domain
-               .replace(/^\//,                  '' )  // Remove root /
-               .replace(/\.[a-zA-Z]+$/,         '' )  // Remove simple extension
-               .replace(/[^\.\w\-]+/g,          '-')  // Replace illegal characters
-               .replace(/\./g,                  ':'); // Replace dots with colons(for valid id)
+    return href.replace(/^[a-z-]+:\/+?[^\/]+/, '' )  // Remove protocol & domain
+        .replace(/^\//,                 '' )  // Remove root /
+        .replace(/\.[a-zA-Z]+$/,        '' )  // Remove simple extension
+        .replace(/[^\.\w-]+/g,          '-')  // Replace illegal characters
+        .replace(/\./g,                 ':'); // Replace dots with colons(for valid id)
+}
+
+function errorConsole(e, rootHref) {
+    var template = '{line} {content}';
+    var filename = e.filename || rootHref;
+    var errors = [];
+    var content = (e.type || "Syntax") + "Error: " + (e.message || 'There is an error in your .less file') +
+        " in " + filename + " ";
+
+    var errorline = function (e, i, classname) {
+        if (e.extract[i] !== undefined) {
+            errors.push(template.replace(/\{line\}/, (parseInt(e.line, 10) || 0) + (i - 1))
+                .replace(/\{class\}/, classname)
+                .replace(/\{content\}/, e.extract[i]));
+        }
+    };
+
+    if (e.extract) {
+        errorline(e, 0, '');
+        errorline(e, 1, 'line');
+        errorline(e, 2, '');
+        content += 'on line ' + e.line + ', column ' + (e.column + 1) + ':\n' +
+            errors.join('\n');
+    } else if (e.stack) {
+        content += e.stack;
+    }
+    log(content, logLevel.errors);
 }
 
 function createCSS(styles, sheet, lastModified) {
@@ -6429,80 +6217,18 @@ function createCSS(styles, sheet, lastModified) {
 
     // Don't update the local store if the file wasn't modified
     if (lastModified && cache) {
-        log('saving ' + href + ' to cache.', 2);
+        log('saving ' + href + ' to cache.', logLevel.info);
         try {
             cache.setItem(href, styles);
             cache.setItem(href + ':timestamp', lastModified);
         } catch(e) {
             //TODO - could do with adding more robust error handling
-            log('failed to save', 1);
+            log('failed to save', logLevel.errors);
         }
     }
 }
 
-function doXHR(url, type, callback, errback) {
-    var xhr = getXMLHttpRequest();
-    var async = isFileProtocol ? less.fileAsync : less.async;
-
-    if (typeof(xhr.overrideMimeType) === 'function') {
-        xhr.overrideMimeType('text/css');
-    }
-    log("XHR: Getting '" + url + "'", 2);
-    xhr.open('GET', url, async);
-    xhr.setRequestHeader('Accept', type || 'text/x-less, text/css; q=0.9, */*; q=0.5');
-    xhr.send(null);
-
-    if (isFileProtocol && !less.fileAsync) {
-        if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
-            callback(xhr.responseText);
-        } else {
-            errback(xhr.status, url);
-        }
-    } else if (async) {
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4) {
-                handleResponse(xhr, callback, errback);
-            }
-        };
-    } else {
-        handleResponse(xhr, callback, errback);
-    }
-
-    function handleResponse(xhr, callback, errback) {
-        if (xhr.status >= 200 && xhr.status < 300) {
-            callback(xhr.responseText,
-                     xhr.getResponseHeader("Last-Modified"));
-        } else if (typeof(errback) === 'function') {
-            errback(xhr.status, url);
-        }
-    }
-}
-
-function getXMLHttpRequest() {
-    if (window.XMLHttpRequest) {
-        return new XMLHttpRequest();
-    } else {
-        try {
-            /*global ActiveXObject */
-            return new ActiveXObject("MSXML2.XMLHTTP.3.0");
-        } catch (e) {
-            log("browser doesn't support AJAX.", 1);
-            return null;
-        }
-    }
-}
-
-function removeNode(node) {
-    return node && node.parentNode.removeChild(node);
-}
-
-function log(str, level) {
-    if (less.env == 'development' && typeof(console) !== 'undefined' && less.log_level >= level) {
-        console.log('less: ' + str);
-    }
-}
-
-function error(e, rootHref) {
+function errorHTML(e, rootHref) {
     var id = 'less-error-message:' + extractId(rootHref || "");
     var template = '<li><label>{line}</label><pre class="{class}">{content}</pre></li>';
     var elem = document.createElement('div'), timer, content, errors = [];
@@ -6513,13 +6239,13 @@ function error(e, rootHref) {
     elem.className = "less-error-message";
 
     content = '<h3>'  + (e.type || "Syntax") + "Error: " + (e.message || 'There is an error in your .less file') +
-              '</h3>' + '<p>in <a href="' + filename   + '">' + filenameNoPath + "</a> ";
+        '</h3>' + '<p>in <a href="' + filename   + '">' + filenameNoPath + "</a> ";
 
     var errorline = function (e, i, classname) {
         if (e.extract[i] !== undefined) {
             errors.push(template.replace(/\{line\}/, (parseInt(e.line, 10) || 0) + (i - 1))
-                               .replace(/\{class\}/, classname)
-                               .replace(/\{content\}/, e.extract[i]));
+                .replace(/\{class\}/, classname)
+                .replace(/\{content\}/, e.extract[i]));
         }
     };
 
@@ -6528,7 +6254,7 @@ function error(e, rootHref) {
         errorline(e, 1, 'line');
         errorline(e, 2, '');
         content += 'on line ' + e.line + ', column ' + (e.column + 1) + ':</p>' +
-                    '<ul>' + errors.join('') + '</ul>';
+            '<ul>' + errors.join('') + '</ul>';
     } else if (e.stack) {
         content += '<br/>' + e.stack.split('\n').slice(1).join('<br/>');
     }
@@ -6537,40 +6263,40 @@ function error(e, rootHref) {
     // CSS for error messages
     createCSS([
         '.less-error-message ul, .less-error-message li {',
-            'list-style-type: none;',
-            'margin-right: 15px;',
-            'padding: 4px 0;',
-            'margin: 0;',
+        'list-style-type: none;',
+        'margin-right: 15px;',
+        'padding: 4px 0;',
+        'margin: 0;',
         '}',
         '.less-error-message label {',
-            'font-size: 12px;',
-            'margin-right: 15px;',
-            'padding: 4px 0;',
-            'color: #cc7777;',
+        'font-size: 12px;',
+        'margin-right: 15px;',
+        'padding: 4px 0;',
+        'color: #cc7777;',
         '}',
         '.less-error-message pre {',
-            'color: #dd6666;',
-            'padding: 4px 0;',
-            'margin: 0;',
-            'display: inline-block;',
+        'color: #dd6666;',
+        'padding: 4px 0;',
+        'margin: 0;',
+        'display: inline-block;',
         '}',
         '.less-error-message pre.line {',
-            'color: #ff0000;',
+        'color: #ff0000;',
         '}',
         '.less-error-message h3 {',
-            'font-size: 20px;',
-            'font-weight: bold;',
-            'padding: 15px 0 5px 0;',
-            'margin: 0;',
+        'font-size: 20px;',
+        'font-weight: bold;',
+        'padding: 15px 0 5px 0;',
+        'margin: 0;',
         '}',
         '.less-error-message a {',
-            'color: #10a',
+        'color: #10a',
         '}',
         '.less-error-message .error {',
-            'color: red;',
-            'font-weight: bold;',
-            'padding-bottom: 2px;',
-            'border-bottom: 1px dashed red;',
+        'color: red;',
+        'font-weight: bold;',
+        'padding-bottom: 2px;',
+        'border-bottom: 1px dashed red;',
         '}'
     ].join('\n'), { title: 'error-message' });
 
@@ -6599,6 +6325,415 @@ function error(e, rootHref) {
         }, 10);
     }
 }
+
+function error(e, rootHref) {
+    if (!less.errorReporting || less.errorReporting === "html") {
+        errorHTML(e, rootHref);
+    } else if (less.errorReporting === "console") {
+        errorConsole(e, rootHref);
+    } else if (typeof less.errorReporting === 'function') {
+        less.errorReporting("add", e, rootHref);
+    }
+}
+
+function removeErrorHTML(path) {
+    var node = document.getElementById('less-error-message:' + extractId(path));
+    if (node) {
+        node.parentNode.removeChild(node);
+    }
+}
+
+function removeErrorConsole(path) {
+    //no action
+}
+
+function removeError(path) {
+    if (!less.errorReporting || less.errorReporting === "html") {
+        removeErrorHTML(path);
+    } else if (less.errorReporting === "console") {
+        removeErrorConsole(path);
+    } else if (typeof less.errorReporting === 'function') {
+        less.errorReporting("remove", path);
+    }
+}
+
+function loadStyles(newVars) {
+    var styles = document.getElementsByTagName('style'),
+        style;
+    for (var i = 0; i < styles.length; i++) {
+        style = styles[i];
+        if (style.type.match(typePattern)) {
+            var env = new less.tree.parseEnv(less),
+                lessText = style.innerHTML || '';
+            env.filename = document.location.href.replace(/#.*$/, '');
+            if (newVars) {
+                env.useFileCache = true;
+                lessText += "\n" + newVars;
+            }
+
+            /*jshint loopfunc:true */
+            // use closure to store current value of i
+            var callback = (function(style) {
+                return function (e, cssAST) {
+                    if (e) {
+                        return error(e, "inline");
+                    }
+                    var css = cssAST.toCSS(less);
+                    style.type = 'text/css';
+                    if (style.styleSheet) {
+                        style.styleSheet.cssText = css;
+                    } else {
+                        style.innerHTML = css;
+                    }
+                };
+            })(style);
+            new(less.Parser)(env).parse(lessText, callback);
+        }
+    }
+}
+
+function extractUrlParts(url, baseUrl) {
+    // urlParts[1] = protocol&hostname || /
+    // urlParts[2] = / if path relative to host base
+    // urlParts[3] = directories
+    // urlParts[4] = filename
+    // urlParts[5] = parameters
+
+    var urlPartsRegex = /^((?:[a-z-]+:)?\/+?(?:[^\/\?#]*\/)|([\/\\]))?((?:[^\/\\\?#]*[\/\\])*)([^\/\\\?#]*)([#\?].*)?$/i,
+        urlParts = url.match(urlPartsRegex),
+        returner = {}, directories = [], i, baseUrlParts;
+
+    if (!urlParts) {
+        throw new Error("Could not parse sheet href - '"+url+"'");
+    }
+
+    // Stylesheets in IE don't always return the full path
+    if (!urlParts[1] || urlParts[2]) {
+        baseUrlParts = baseUrl.match(urlPartsRegex);
+        if (!baseUrlParts) {
+            throw new Error("Could not parse page url - '"+baseUrl+"'");
+        }
+        urlParts[1] = urlParts[1] || baseUrlParts[1] || "";
+        if (!urlParts[2]) {
+            urlParts[3] = baseUrlParts[3] + urlParts[3];
+        }
+    }
+
+    if (urlParts[3]) {
+        directories = urlParts[3].replace(/\\/g, "/").split("/");
+
+        // extract out . before .. so .. doesn't absorb a non-directory
+        for(i = 0; i < directories.length; i++) {
+            if (directories[i] === ".") {
+                directories.splice(i, 1);
+                i -= 1;
+            }
+        }
+
+        for(i = 0; i < directories.length; i++) {
+            if (directories[i] === ".." && i > 0) {
+                directories.splice(i-1, 2);
+                i -= 2;
+            }
+        }
+    }
+
+    returner.hostPart = urlParts[1];
+    returner.directories = directories;
+    returner.path = urlParts[1] + directories.join("/");
+    returner.fileUrl = returner.path + (urlParts[4] || "");
+    returner.url = returner.fileUrl + (urlParts[5] || "");
+    return returner;
+}
+
+function pathDiff(url, baseUrl) {
+    // diff between two paths to create a relative path
+
+    var urlParts = extractUrlParts(url),
+        baseUrlParts = extractUrlParts(baseUrl),
+        i, max, urlDirectories, baseUrlDirectories, diff = "";
+    if (urlParts.hostPart !== baseUrlParts.hostPart) {
+        return "";
+    }
+    max = Math.max(baseUrlParts.directories.length, urlParts.directories.length);
+    for(i = 0; i < max; i++) {
+        if (baseUrlParts.directories[i] !== urlParts.directories[i]) { break; }
+    }
+    baseUrlDirectories = baseUrlParts.directories.slice(i);
+    urlDirectories = urlParts.directories.slice(i);
+    for(i = 0; i < baseUrlDirectories.length-1; i++) {
+        diff += "../";
+    }
+    for(i = 0; i < urlDirectories.length-1; i++) {
+        diff += urlDirectories[i] + "/";
+    }
+    return diff;
+}
+
+function getXMLHttpRequest() {
+    if (window.XMLHttpRequest) {
+        return new XMLHttpRequest();
+    } else {
+        try {
+            /*global ActiveXObject */
+            return new ActiveXObject("MSXML2.XMLHTTP.3.0");
+        } catch (e) {
+            log("browser doesn't support AJAX.", logLevel.errors);
+            return null;
+        }
+    }
+}
+
+function doXHR(url, type, callback, errback) {
+    var xhr = getXMLHttpRequest();
+    var async = isFileProtocol ? less.fileAsync : less.async;
+
+    if (typeof(xhr.overrideMimeType) === 'function') {
+        xhr.overrideMimeType('text/css');
+    }
+    log("XHR: Getting '" + url + "'", logLevel.info);
+    xhr.open('GET', url, async);
+    xhr.setRequestHeader('Accept', type || 'text/x-less, text/css; q=0.9, */*; q=0.5');
+    xhr.send(null);
+
+    function handleResponse(xhr, callback, errback) {
+        if (xhr.status >= 200 && xhr.status < 300) {
+            callback(xhr.responseText,
+                xhr.getResponseHeader("Last-Modified"));
+        } else if (typeof(errback) === 'function') {
+            errback(xhr.status, url);
+        }
+    }
+
+    if (isFileProtocol && !less.fileAsync) {
+        if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
+            callback(xhr.responseText);
+        } else {
+            errback(xhr.status, url);
+        }
+    } else if (async) {
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4) {
+                handleResponse(xhr, callback, errback);
+            }
+        };
+    } else {
+        handleResponse(xhr, callback, errback);
+    }
+}
+
+function loadFile(originalHref, currentFileInfo, callback, env, newVars) {
+
+    if (currentFileInfo && currentFileInfo.currentDirectory && !/^([a-z-]+:)?\//.test(originalHref)) {
+        originalHref = currentFileInfo.currentDirectory + originalHref;
+    }
+
+    // sheet may be set to the stylesheet for the initial load or a collection of properties including
+    // some env variables for imports
+    var hrefParts = extractUrlParts(originalHref, window.location.href);
+    var href      = hrefParts.url;
+    var newFileInfo = {
+        currentDirectory: hrefParts.path,
+        filename: href
+    };
+
+    if (currentFileInfo) {
+        newFileInfo.entryPath = currentFileInfo.entryPath;
+        newFileInfo.rootpath = currentFileInfo.rootpath;
+        newFileInfo.rootFilename = currentFileInfo.rootFilename;
+        newFileInfo.relativeUrls = currentFileInfo.relativeUrls;
+    } else {
+        newFileInfo.entryPath = hrefParts.path;
+        newFileInfo.rootpath = less.rootpath || hrefParts.path;
+        newFileInfo.rootFilename = href;
+        newFileInfo.relativeUrls = env.relativeUrls;
+    }
+
+    if (newFileInfo.relativeUrls) {
+        if (env.rootpath) {
+            newFileInfo.rootpath = extractUrlParts(env.rootpath + pathDiff(hrefParts.path, newFileInfo.entryPath)).path;
+        } else {
+            newFileInfo.rootpath = hrefParts.path;
+        }
+    }
+
+    if (env.useFileCache && fileCache[href]) {
+        try {
+            var lessText = fileCache[href];
+            if (newVars) {
+                lessText += "\n" + newVars;
+            }
+            callback(null, lessText, href, newFileInfo, { lastModified: new Date() });
+        } catch (e) {
+            callback(e, null, href);
+        }
+        return;
+    }
+
+    doXHR(href, env.mime, function (data, lastModified) {
+        // per file cache
+        fileCache[href] = data;
+
+        // Use remote copy (re-parse)
+        try {
+            callback(null, data, href, newFileInfo, { lastModified: lastModified });
+        } catch (e) {
+            callback(e, null, href);
+        }
+    }, function (status, url) {
+        callback({ type: 'File', message: "'" + url + "' wasn't found (" + status + ")" }, null, href);
+    });
+}
+
+function loadStyleSheet(sheet, callback, reload, remaining, newVars) {
+
+    var env = new less.tree.parseEnv(less);
+    env.mime = sheet.type;
+
+    if (newVars) {
+        env.useFileCache = true;
+    }
+
+    loadFile(sheet.href, null, function(e, data, path, newFileInfo, webInfo) {
+
+        if (webInfo) {
+            webInfo.remaining = remaining;
+
+            var css       = cache && cache.getItem(path),
+                timestamp = cache && cache.getItem(path + ':timestamp');
+
+            if (!reload && timestamp && webInfo.lastModified &&
+                (new(Date)(webInfo.lastModified).valueOf() ===
+                    new(Date)(timestamp).valueOf())) {
+                // Use local copy
+                createCSS(css, sheet);
+                webInfo.local = true;
+                callback(null, null, data, sheet, webInfo, path);
+                return;
+            }
+        }
+
+        //TODO add tests around how this behaves when reloading
+        removeError(path);
+
+        if (data) {
+            env.currentFileInfo = newFileInfo;
+            new(less.Parser)(env).parse(data, function (e, root) {
+                if (e) { return callback(e, null, null, sheet); }
+                try {
+                    callback(e, root, data, sheet, webInfo, path);
+                } catch (e) {
+                    callback(e, null, null, sheet);
+                }
+            });
+        } else {
+            callback(e, null, null, sheet, webInfo, path);
+        }
+    }, env, newVars);
+}
+
+function loadStyleSheets(callback, reload, newVars) {
+    for (var i = 0; i < less.sheets.length; i++) {
+        loadStyleSheet(less.sheets[i], callback, reload, less.sheets.length - (i + 1), newVars);
+    }
+}
+
+function initRunningMode(){
+    if (less.env === 'development') {
+        less.optimization = 0;
+        less.watchTimer = setInterval(function () {
+            if (less.watchMode) {
+                loadStyleSheets(function (e, root, _, sheet, env) {
+                    if (e) {
+                        error(e, sheet.href);
+                    } else if (root) {
+                        createCSS(root.toCSS(less), sheet, env.lastModified);
+                    }
+                });
+            }
+        }, less.poll);
+    } else {
+        less.optimization = 3;
+    }
+}
+
+//
+// Watch mode
+//
+less.watch   = function () {
+    if (!less.watchMode ){
+        less.env = 'development';
+         initRunningMode();
+    }
+    return this.watchMode = true;
+};
+
+less.unwatch = function () {clearInterval(less.watchTimer); return this.watchMode = false; };
+
+if (/!watch/.test(location.hash)) {
+    less.watch();
+}
+
+if (less.env != 'development') {
+    try {
+        cache = (typeof(window.localStorage) === 'undefined') ? null : window.localStorage;
+    } catch (_) {}
+}
+
+//
+// Get all <link> tags with the 'rel' attribute set to "stylesheet/less"
+//
+var links = document.getElementsByTagName('link');
+
+less.sheets = [];
+
+for (var i = 0; i < links.length; i++) {
+    if (links[i].rel === 'stylesheet/less' || (links[i].rel.match(/stylesheet/) &&
+       (links[i].type.match(typePattern)))) {
+        less.sheets.push(links[i]);
+    }
+}
+
+//
+// With this function, it's possible to alter variables and re-render
+// CSS without reloading less-files
+//
+less.modifyVars = function(record) {
+    var newVars = "";
+    for (var name in record) {
+        newVars += ((name.slice(0,1) === '@')? '' : '@') + name +': '+
+                ((record[name].slice(-1) === ';')? record[name] : record[name] +';');
+    }
+    less.refresh(false, newVars);
+};
+
+less.refresh = function (reload, newVars) {
+    var startTime, endTime;
+    startTime = endTime = new Date();
+
+    loadStyleSheets(function (e, root, _, sheet, env) {
+        if (e) {
+            return error(e, sheet.href);
+        }
+        if (env.local) {
+            log("loading " + sheet.href + " from cache.", logLevel.info);
+        } else {
+            log("parsed " + sheet.href + " successfully.", logLevel.info);
+            createCSS(root.toCSS(less), sheet, env.lastModified);
+        }
+        log("css for " + sheet.href + " generated in " + (new Date() - endTime) + 'ms', logLevel.info);
+        if (env.remaining === 0) {
+            log("css generated in " + (new Date() - startTime) + 'ms', logLevel.info);
+        }
+        endTime = new Date();
+    }, reload, newVars);
+
+    loadStyles(newVars);
+};
+
+less.refreshStyles = loadStyles;
+
+less.Parser.fileLoader = loadFile;
 
 less.refresh(less.env === 'development');
 

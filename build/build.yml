@@ -21,7 +21,6 @@ lib: lib/less
 prepend:
   amd:     
     - build/amd-prologue.js
-    - build/browser-header.js
   browser: 
     - build/require.js
     - build/browser-header.js

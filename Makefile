@@ -5,7 +5,7 @@ all: version amd-browser-strict test benchmark
 # Run all tests
 #
 test: 
-	node test/less-test.js
+	-node test/less-test.js
 
 #
 # Run benchmark

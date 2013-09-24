@@ -1,32 +1,14 @@
-/*! 
- * LESS - Leaner CSS v1.5.0-b3 
- * http://lesscss.org 
- * 
- * Copyright (c) 2009-2013, Alexis Sellier <self@cloudhead.net> 
- * Licensed under the Apache v2 License. 
- * 
- * @licence 
- */ 
-
-
-
-
-//==========================================================
-// Source: build/amd-prologue.js
-
-
 /*
    AMD prologue: when you are loading this file in a AMD compliant 
    environment, LESS will be an AMD module.
  */
  
 (function ( root, factory ) {
-    /* global module define */
     if ( typeof module === "object" && module.exports ) {
         // Node, or CommonJS-Like environments
         module.exports = function () {
             return factory(root);
-        };
+        }
     } else if ( typeof define === "function" && define.amd ) {
         // AMD. Register as a named module.
         define("less", [], function () {
@@ -38,44 +20,33 @@
     }
 }( this, function (window, undefined) {
 
-
-
-
-
-//==========================================================
-// Source: lib/less/parser.js
-
-
+if (typeof(window.less) === 'undefined' || typeof(window.less.nodeType) !== 'undefined') { window.less = {}; }
+less = window.less;
+tree = window.less.tree = {};
+less.mode = 'browser';
+/* global environment, process, window */
 var less, tree;
 
-
-less = {
-    tree: {},
-    mode: 'browser'
-};
-tree = less.tree;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if (typeof environment === "object" && ({}).toString.call(environment) === "[object Environment]") {
+    // Rhino
+    // Details on how to detect Rhino: https://github.com/ringo/ringojs/issues/88
+    if (typeof(window) === 'undefined') { less = {}; }
+    else                                { less = window.less = {}; }
+    tree = less.tree = {};
+    less.mode = 'rhino';
+} else if (typeof(process) === 'object' && process.versions && process.versions.node) {
+    // Node.js
+    // Node.js does not have a header file added which defines less
+    less = exports;
+    tree = require('./tree');
+    less.mode = 'node';
+} else {
+    // Browser
+    if (typeof(window.less) === 'undefined') { window.less = {}; }
+    less = window.less;
+    tree = window.less.tree = {};
+    less.mode = 'browser';
+}
 //
 // less.js - parser
 //
@@ -311,9 +282,9 @@ less.Parser = function Parser(env) {
 
     function getDebugInfo(index, inputStream, env) {
         var filename = env.currentFileInfo.filename;
-
-
-
+        if(less.mode !== 'browser' && less.mode !== 'rhino') {
+            filename = require('path').resolve(filename);
+        }
 
         return {
             lineNumber: getLocation(index, inputStream).line + 1,
@@ -1776,14 +1747,6 @@ less.Parser = function Parser(env) {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/functions.js
-
-
-
-
 tree.functions = {
     rgb: function (r, g, b) {
         return this.rgba(r, g, b, 1.0);
@@ -2224,179 +2187,179 @@ tree.functions = {
 
     "data-uri": function(mimetypeNode, filePathNode) {
 
-
-
+        /* global window */
+        if (typeof window !== 'undefined') {
             return new tree.URL(filePathNode || mimetypeNode, this.currentFileInfo).eval(this.env);
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        var mimetype = mimetypeNode.value;
+        var filePath = (filePathNode && filePathNode.value);
+
+        var fs = require("fs"),
+            path = require("path"),
+            useBase64 = false;
+
+        if (arguments.length < 2) {
+            filePath = mimetype;
+        }
+
+        if (this.env.isPathRelative(filePath)) {
+            if (this.currentFileInfo.relativeUrls) {
+                filePath = path.join(this.currentFileInfo.currentDirectory, filePath);
+            } else {
+                filePath = path.join(this.currentFileInfo.entryPath, filePath);
+            }
+        }
+
+        // detect the mimetype if not given
+        if (arguments.length < 2) {
+            var mime;
+            try {
+                mime = require('mime');
+            } catch (ex) {
+                mime = tree._mime;
+            }
+
+            mimetype = mime.lookup(filePath);
+
+            // use base 64 unless it's an ASCII or UTF-8 format
+            var charset = mime.charsets.lookup(mimetype);
+            useBase64 = ['US-ASCII', 'UTF-8'].indexOf(charset) < 0;
+            if (useBase64) { mimetype += ';base64'; }
+        }
+        else {
+            useBase64 = /;base64$/.test(mimetype);
+        }
+
+        var buf = fs.readFileSync(filePath);
+
+        // IE8 cannot handle a data-uri larger than 32KB. If this is exceeded
+        // and the --ieCompat flag is enabled, return a normal url() instead.
+        var DATA_URI_MAX_KB = 32,
+            fileSizeInKB = parseInt((buf.length / 1024), 10);
+        if (fileSizeInKB >= DATA_URI_MAX_KB) {
+
+            if (this.env.ieCompat !== false) {
+                if (!this.env.silent) {
+                    console.warn("Skipped data-uri embedding of %s because its size (%dKB) exceeds IE8-safe %dKB!", filePath, fileSizeInKB, DATA_URI_MAX_KB);
+                }
+
+                return new tree.URL(filePathNode || mimetypeNode, this.currentFileInfo).eval(this.env);
+            }
+        }
+
+        buf = useBase64 ? buf.toString('base64')
+                        : encodeURIComponent(buf);
+
+        var uri = "'data:" + mimetype + ',' + buf + "'";
+        return new(tree.URL)(new(tree.Anonymous)(uri));
+    },
+
+    "svg-gradient": function(direction) {
+
+        function throwArgumentDescriptor() {
+            throw { type: "Argument", message: "svg-gradient expects direction, start_color [start_position], [color position,]..., end_color [end_position]" };
+        }
+
+        if (arguments.length < 3) {
+            throwArgumentDescriptor();
+        }
+        var stops = Array.prototype.slice.call(arguments, 1),
+            gradientDirectionSvg,
+            gradientType = "linear",
+            rectangleDimension = 'x="0" y="0" width="1" height="1"',
+            useBase64 = true,
+            renderEnv = {compress: false},
+            returner,
+            directionValue = direction.toCSS(renderEnv),
+            i, color, position, positionValue, alpha;
+
+        switch (directionValue) {
+            case "to bottom":
+                gradientDirectionSvg = 'x1="0%" y1="0%" x2="0%" y2="100%"';
+                break;
+            case "to right":
+                gradientDirectionSvg = 'x1="0%" y1="0%" x2="100%" y2="0%"';
+                break;
+            case "to bottom right":
+                gradientDirectionSvg = 'x1="0%" y1="0%" x2="100%" y2="100%"';
+                break;
+            case "to top right":
+                gradientDirectionSvg = 'x1="0%" y1="100%" x2="100%" y2="0%"';
+                break;
+            case "radial":
+            case "ellipse":
+            case "ellipse at center":
+                gradientType = "radial";
+                gradientDirectionSvg = 'cx="50%" cy="50%" r="75%"';
+                rectangleDimension = 'x="-50" y="-50" width="101" height="101"';
+                break;
+            default:
+                throw { type: "Argument", message: "svg-gradient direction must be 'to bottom', 'to right', 'to bottom right', 'to top right', 'ellipse', 'ellipse at center' or 'radial'" };
+        }
+        returner = '<?xml version="1.0" ?>' +
+            '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100%" height="100%" viewBox="0 0 1 1" preserveAspectRatio="none">' +
+            '<' + gradientType + 'Gradient id="gradient" gradientUnits="userSpaceOnUse" ' + gradientDirectionSvg + '>';
+
+        for (i = 0; i < stops.length; i+= 1) {
+            if (stops[i].value) {
+                color = stops[i].value[0];
+                position = stops[i].value[1];
+            } else {
+                color = stops[i];
+                position = undefined;
+            }
+
+            if (!(color instanceof tree.Color) || (!((i === 0 || i+1 === stops.length) && position === undefined) && !(position instanceof tree.Dimension))) {
+                throwArgumentDescriptor();
+            }
+            positionValue = position ? position.toCSS(renderEnv) : i === 0 ? "0%" : "100%";
+            alpha = color.alpha;
+            returner += '<stop offset="' + positionValue + '" stop-color="' + color.toRGB() + '"' + (alpha < 1 ? ' stop-opacity="' + alpha + '"' : '') + '/>';
+        }
+        returner += '</' + gradientType + 'Gradient>' +
+                    '<rect ' + rectangleDimension + ' fill="url(#gradient)" /></svg>';
+
+        if (useBase64) {
+            // only works in node, needs interface to what is supported in environment
+            try {
+                returner = new Buffer(returner).toString('base64');
+            } catch(e) {
+                useBase64 = false;
+            }
+        }
+
+        returner = "'data:image/svg+xml" + (useBase64 ? ";base64" : "") + "," + returner + "'";
+        return new(tree.URL)(new(tree.Anonymous)(returner));
+    }
+};
+
+// these static methods are used as a fallback when the optional 'mime' dependency is missing
+tree._mime = {
+    // this map is intentionally incomplete
+    // if you want more, install 'mime' dep
+    _types: {
+        '.htm' : 'text/html',
+        '.html': 'text/html',
+        '.gif' : 'image/gif',
+        '.jpg' : 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png' : 'image/png'
+    },
+    lookup: function (filepath) {
+        var ext = require('path').extname(filepath),
+            type = tree._mime._types[ext];
+        if (type === undefined) {
+            throw new Error('Optional dependency "mime" is required for ' + ext);
+        }
+        return type;
+    },
+    charsets: {
+        lookup: function (type) {
+            // assumes all text types are UTF-8
+            return type && (/^text\//).test(type) ? 'UTF-8' : '';
+        }
+    }
 };
 
 var mathFunctions = [{name:"ceil"}, {name:"floor"}, {name: "sqrt"}, {name:"abs"},
@@ -2451,14 +2414,6 @@ tree.functionCall = function(env, currentFileInfo) {
 };
 
 tree.functionCall.prototype = tree.functions;
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/colors.js
 
 
 
@@ -2614,14 +2569,6 @@ tree.functionCall.prototype = tree.functions;
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree.js
-
-
-
-
 tree.debugInfo = function(env, ctx, lineSeperator) {
     var result="";
     if (env.dumpLineNumbers && !env.compress) {
@@ -2700,14 +2647,6 @@ tree.outputRuleset = function (env, output, rules) {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/alpha.js
-
-
-
-
 tree.Alpha = function (val) {
     this.value = val;
 };
@@ -2733,14 +2672,6 @@ tree.Alpha.prototype = {
     },
     toCSS: tree.toCSS
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/anonymous.js
 
 
 
@@ -2777,14 +2708,6 @@ tree.Anonymous.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/assignment.js
-
-
-
-
 tree.Assignment = function (key, val) {
     this.key = key;
     this.value = val;
@@ -2810,14 +2733,6 @@ tree.Assignment.prototype = {
     },
     toCSS: tree.toCSS
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/call.js
 
 
 
@@ -2888,14 +2803,6 @@ tree.Call.prototype = {
 
     toCSS: tree.toCSS
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/color.js
 
 
 
@@ -3078,14 +2985,6 @@ tree.Color.fromKeyword = function(keyword) {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/comment.js
-
-
-
-
 tree.Comment = function (value, silent, index, currentFileInfo) {
     this.value = value;
     this.silent = !!silent;
@@ -3110,14 +3009,6 @@ tree.Comment.prototype = {
         this.isReferenced = true;
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/condition.js
 
 
 
@@ -3168,14 +3059,6 @@ tree.Condition.prototype = {
         return this.negate ? !result : result;
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/dimension.js
 
 
 
@@ -3495,14 +3378,6 @@ tree.Unit.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/directive.js
-
-
-
-
 tree.Directive = function (name, value, index, currentFileInfo) {
     this.name = name;
 
@@ -3560,14 +3435,6 @@ tree.Directive.prototype = {
         }
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/element.js
 
 
 
@@ -3676,14 +3543,6 @@ tree.Combinator.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/expression.js
-
-
-
-
 tree.Expression = function (value) { this.value = value; };
 tree.Expression.prototype = {
     type: "Expression",
@@ -3736,14 +3595,6 @@ tree.Expression.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/extend.js
-
-
-
-
 tree.Extend = function Extend(selector, option, index) {
     this.selector = selector;
     this.option = option;
@@ -3783,14 +3634,6 @@ tree.Extend.prototype = {
         this.selfSelectors = [{ elements: selfElements }];
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/import.js
 
 
 
@@ -3910,14 +3753,6 @@ tree.Import.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/javascript.js
-
-
-
-
 tree.JavaScript = function (string, index, escaped) {
     this.escaped = escaped;
     this.expression = string;
@@ -3971,14 +3806,6 @@ tree.JavaScript.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/keyword.js
-
-
-
-
 tree.Keyword = function (value) { this.value = value; };
 tree.Keyword.prototype = {
     type: "Keyword",
@@ -3998,14 +3825,6 @@ tree.Keyword.prototype = {
 
 tree.True = new(tree.Keyword)('true');
 tree.False = new(tree.Keyword)('false');
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/media.js
 
 
 
@@ -4154,14 +3973,6 @@ tree.Media.prototype = {
       this.rules = [new(tree.Ruleset)(selectors.slice(0), [this.rules[0]])];
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/mixin.js
 
 
 
@@ -4420,14 +4231,6 @@ tree.mixin.Definition.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/negative.js
-
-
-
-
 tree.Negative = function (node) {
     this.value = node;
 };
@@ -4448,14 +4251,6 @@ tree.Negative.prototype = {
         return new(tree.Negative)(this.value.eval(env));
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/operation.js
 
 
 
@@ -4521,14 +4316,6 @@ tree.operate = function (env, op, a, b) {
 
 
 
-
-//==========================================================
-// Source: lib/less/tree/paren.js
-
-
-
-
-
 tree.Paren = function (node) {
     this.value = node;
 };
@@ -4547,14 +4334,6 @@ tree.Paren.prototype = {
         return new(tree.Paren)(this.value.eval(env));
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/quoted.js
 
 
 
@@ -4603,14 +4382,6 @@ tree.Quoted.prototype = {
         return left < right ? -1 : 1;
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/rule.js
 
 
 
@@ -4671,14 +4442,6 @@ tree.Rule.prototype = {
                               this.index, this.currentFileInfo, this.inline);
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/ruleset.js
 
 
 
@@ -5145,14 +4908,6 @@ tree.Ruleset.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/selector.js
-
-
-
-
 tree.Selector = function (elements, extendList, condition, index, currentFileInfo, isReferenced) {
     this.elements = elements;
     this.extendList = extendList || [];
@@ -5235,14 +4990,6 @@ tree.Selector.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/unicode-descriptor.js
-
-
-
-
 tree.UnicodeDescriptor = function (value) {
     this.value = value;
 };
@@ -5254,14 +5001,6 @@ tree.UnicodeDescriptor.prototype = {
     toCSS: tree.toCSS,
     eval: function () { return this; }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/url.js
 
 
 
@@ -5302,14 +5041,6 @@ tree.URL.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/tree/value.js
-
-
-
-
 tree.Value = function (value) {
     this.value = value;
 };
@@ -5338,14 +5069,6 @@ tree.Value.prototype = {
     },
     toCSS: tree.toCSS
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/tree/variable.js
 
 
 
@@ -5389,14 +5112,6 @@ tree.Variable.prototype = {
         }
     }
 };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/env.js
 
 
 
@@ -5533,14 +5248,6 @@ tree.Variable.prototype = {
 
 
 
-
-
-//==========================================================
-// Source: lib/less/visitor.js
-
-
-
-
     tree.visitor = function(implementation) {
         this._implementation = implementation;
     };
@@ -5606,14 +5313,6 @@ tree.Variable.prototype = {
             return sum;
         }
     };
-
-
-
-
-
-//==========================================================
-// Source: lib/less/import-visitor.js
-
 
 
     tree.importVisitor = function(importer, finish, evalEnv) {
@@ -5728,14 +5427,6 @@ tree.Variable.prototype = {
     };
 
 
-
-
-
-//==========================================================
-// Source: lib/less/join-selector-visitor.js
-
-
-
     tree.joinSelectorVisitor = function() {
         this.contexts = [[]];
         this._visitor = new tree.visitor(this);
@@ -5774,14 +5465,6 @@ tree.Variable.prototype = {
             mediaNode.rules[0].root = (context.length === 0 || context[0].multiMedia);
         }
     };
-
-
-
-
-
-//==========================================================
-// Source: lib/less/to-css-visitor.js
-
 
 
     tree.toCSSVisitor = function(env) {
@@ -5980,14 +5663,6 @@ tree.Variable.prototype = {
             });
         }
     };
-
-
-
-
-
-//==========================================================
-// Source: lib/less/extend-visitor.js
-
 
 
     /*jshint loopfunc:true */
@@ -6389,138 +6064,6 @@ tree.Variable.prototype = {
             this.allExtendsStack.length = this.allExtendsStack.length - 1;
         }
     };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/source-map-output.js
-
-
-
-
-    tree.sourceMapOutput = function (options) {
-        this._css = [];
-        this._rootNode = options.rootNode;
-        this._writeSourceMap = options.writeSourceMap;
-        this._contentsMap = options.contentsMap;
-        this._sourceMapFilename = options.sourceMapFilename;
-        this._outputFilename = options.outputFilename;
-        this._sourceMapBasepath = options.sourceMapBasepath;
-        this._sourceMapRootpath = options.sourceMapRootpath;
-        this._outputSourceFiles = options.outputSourceFiles;
-        this._sourceMapGeneratorConstructor = options.sourceMapGenerator || require("source-map").SourceMapGenerator;
-
-        if (this._sourceMapRootpath && this._sourceMapRootpath.charAt(this._sourceMapRootpath.length-1) !== '/') {
-            this._sourceMapRootpath += '/';
-        }
-
-        this._lineNumber = 0;
-        this._column = 0;
-    };
-
-    tree.sourceMapOutput.prototype.normalizeFilename = function(filename) {
-        if (this._sourceMapBasepath && filename.indexOf(this._sourceMapBasepath) === 0) {
-             filename = filename.substring(this._sourceMapBasepath.length);
-             if (filename.charAt(0) === '\\' || filename.charAt(0) === '/') {
-                filename = filename.substring(1);
-             }
-        }
-        return (this._sourceMapRootpath || "") + filename.replace(/\\/g, '/');
-    };
-
-    tree.sourceMapOutput.prototype.add = function(chunk, fileInfo, index, mapLines) {
-
-        //ignore adding empty strings
-        if (!chunk) {
-            return;
-        }
-
-        var lines,
-            sourceLines,
-            columns,
-            sourceColumns,
-            i;
-
-        if (fileInfo) {
-            var inputSource = this._contentsMap[fileInfo.filename].substring(0, index);
-            sourceLines = inputSource.split("\n");
-            sourceColumns = sourceLines[sourceLines.length-1];
-        }
-
-        lines = chunk.split("\n");
-        columns = lines[lines.length-1];
-
-        if (fileInfo) {
-            if (!mapLines) {
-                this._sourceMapGenerator.addMapping({ generated: { line: this._lineNumber + 1, column: this._column},
-                    original: { line: sourceLines.length, column: sourceColumns.length},
-                    source: this.normalizeFilename(fileInfo.filename)});
-            } else {
-                for(i = 0; i < lines.length; i++) {
-                    this._sourceMapGenerator.addMapping({ generated: { line: this._lineNumber + i + 1, column: i === 0 ? this._column : 0},
-                        original: { line: sourceLines.length + i, column: i === 0 ? sourceColumns.length : 0},
-                        source: this.normalizeFilename(fileInfo.filename)});
-                }
-            }
-        }
-
-        if (lines.length === 1) {
-            this._column += columns.length;
-        } else {
-            this._lineNumber += lines.length - 1;
-            this._column = columns.length;
-        }
-
-        this._css.push(chunk);
-    };
-
-    tree.sourceMapOutput.prototype.isEmpty = function() {
-        return this._css.length === 0;
-    };
-
-    tree.sourceMapOutput.prototype.toCSS = function(env) {
-        this._sourceMapGenerator = new this._sourceMapGeneratorConstructor({ file: this._outputFilename, sourceRoot: null });
-
-        if (this._outputSourceFiles) {
-            for(var filename in this._contentsMap) {
-                this._sourceMapGenerator.setSourceContent(this.normalizeFilename(filename), this._contentsMap[filename]);
-            }
-        }
-
-        this._rootNode.genCSS(env, this);
-
-        if (this._css.length > 0) {
-            var sourceMapFilename,
-                sourceMapContent = JSON.stringify(this._sourceMapGenerator.toJSON());
-
-            if (this._sourceMapFilename) {
-                sourceMapFilename = this.normalizeFilename(this._sourceMapFilename);
-            }
-
-            if (this._writeSourceMap) {
-                this._writeSourceMap(sourceMapContent);
-            } else {
-                sourceMapFilename = "data:application/json," + encodeURIComponent(sourceMapContent);
-            }
-
-            if (sourceMapFilename) {
-                this._css.push("/*# sourceMappingURL=" + sourceMapFilename + " */");
-            }
-        }
-
-        return this._css.join('');
-    };
-
-
-
-
-
-
-//==========================================================
-// Source: lib/less/browser.js
 
 
 //
@@ -7191,15 +6734,6 @@ less.Parser.fileLoader = loadFile;
 less.refresh(less.env === 'development');
 
 
-
-
-//==========================================================
-// Source: build/amd-epilogue.js
-
-
-
-
 	return less;
 }));
-
 
