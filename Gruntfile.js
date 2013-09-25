@@ -212,6 +212,7 @@ module.exports = function(grunt) {
       }
 
 
+/*
       if (state === 0 && s.indexOf("\"data-uri\": function(") >= 0) {
         state = 4;
 
@@ -229,7 +230,7 @@ module.exports = function(grunt) {
       } else if (state === 7 && s.indexOf("};") >= 0) {
         state = 0;
       }
-
+*/
 
       // kill '(function (tree) { ... })(require('./tree'));' wrapper:
       if (state === 0 && wrapper_state === 0 && s.indexOf("(function (tree) {") === 0) {
