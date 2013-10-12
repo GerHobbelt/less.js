@@ -1,5 +1,5 @@
 /*!
- * LESS - Leaner CSS v1.5.0-b3
+ * LESS - Leaner CSS v1.5.0-b4 
  * http://lesscss.org
  *
  * Copyright (c) 2009-2013, Alexis Sellier <self@cloudhead.net>
@@ -1311,8 +1311,8 @@ less.Parser = function Parser(env) {
                     key = expect(/^(?:[_A-Za-z0-9\-\*]*\|)?(?:[_A-Za-z0-9\-]|\\.)+/);
                 }
 
-                if ((op = $(/^[|~*$\^]?=/))) {
-                    val = $(this.entities.quoted) || $(/^[\w\-]+/) || $(this.entities.variableCurly);
+                if ((op = $(/^[|~*$^]?=/))) {
+                    val = $(this.entities.quoted) || $(/^[0-9]+%/) || $(/^[\w\-]+/) || $(this.entities.variableCurly);
                 }
 
                 expect(']');
@@ -2216,10 +2216,17 @@ tree.functions = {
     },
     shade: function(color, amount) {
         return this.mix(this.rgb(0, 0, 0), color, amount);
-    },
+    },   
     extract: function(values, index) {
-        index = index.value - 1; // (1-based index)
-        return values.value[index];
+        index = index.value - 1; // (1-based index)       
+        // handle non-array values as an array of length 1
+        // return 'undefined' if index is invalid
+        return Array.isArray(values.value) 
+            ? values.value[index] : Array(values)[index];
+    },
+    length: function(values) {
+        var n = Array.isArray(values.value) ? values.value.length : 1;
+        return new tree.Dimension(n);
     },
 
     "data-uri": function(mimetypeNode, filePathNode) {
@@ -2281,9 +2288,6 @@ tree.functions = {
                 }
 
                 return new tree.URL(filePathNode || mimetypeNode, this.currentFileInfo).eval(this.env);
-            } else if (!this.env.silent) {
-                // if explicitly disabled (via --no-ie-compat on CLI, or env.ieCompat === false), merely warn
-                console.warn("WARNING: Embedding %s (%dKB) exceeds IE8's data-uri size limit of %dKB!", filePath, fileSizeInKB, DATA_URI_MAX_KB);
             }
         }
 
@@ -5462,7 +5466,8 @@ tree.Variable.prototype = {
         'strictMath',  // whether math has to be within parenthesis
         'strictUnits', // whether units need to evaluate correctly
         'cleancss',    // whether to compress with clean-css
-        'sourceMap'    // whether to output a source map
+        'sourceMap',   // whether to output a source map
+        'importMultiple'// whether we are currently importing multiple copies
         ];
 
     tree.evalEnv = function(options, frames) {
@@ -5665,9 +5670,14 @@ tree.Variable.prototype = {
                     this.importCount++;
                     var env = new tree.evalEnv(this.env, this.env.frames.slice(0));
 
+                    if (importNode.options.multiple) {
+                        env.importMultiple = true;
+                    }
+
                     this._importer.push(importNode.getPath(), importNode.currentFileInfo, importNode.options, function (e, root, imported, fullPath) {
                         if (e && !e.filename) { e.index = importNode.index; e.filename = importNode.currentFileInfo.filename; }
-                        if (imported && !importNode.options.multiple) { importNode.skip = imported; }
+
+                        if (imported && !env.importMultiple) { importNode.skip = imported; }
 
                         var subFinish = function(e) {
                             importVisitor.importCount--;
