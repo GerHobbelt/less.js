@@ -1,4 +1,4 @@
-# [Less.js v1.5.0-b3](http://lesscss.org)
+# [Less.js v1.5.0-b4](http://lesscss.org)
 
 > The **dynamic** stylesheet language. [http://lesscss.org](http://lesscss.org).
 
@@ -321,7 +321,7 @@ Please review the [Gruntfile](Gruntfile.js) to become acquainted with the other 
 
 
 ## Release History
-See the [changelog](CHANGELOG)
+See the [changelog](CHANGELOG.md)
 
 ## [License](LICENSE)
 
