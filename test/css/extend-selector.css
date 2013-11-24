@@ -52,9 +52,29 @@ div.ext7,
 .c.replace + .replace .replace,
 .replace.replace .c,
 .c.replace + .replace .c,
-.rep_ace .rep_ace .rep_ace,
+.rep_ace.rep_ace .rep_ace,
 .c.rep_ace + .rep_ace .rep_ace,
-.rep_ace .rep_ace .c,
+.rep_ace.rep_ace .c,
 .c.rep_ace + .rep_ace .c {
   prop: copy-paste-replace;
+}
+.attributes [data="test"],
+.attributes .attributes .attribute-test {
+  extend: attributes;
+}
+.attributes [data],
+.attributes .attributes .attribute-test2 {
+  extend: attributes2;
+}
+.attributes [data="test3"],
+.attributes .attributes .attribute-test {
+  extend: attributes2;
+}
+.header .header-nav,
+.footer .footer-nav {
+  background: red;
+}
+.header .header-nav:before,
+.footer .footer-nav:before {
+  background: blue;
 }
