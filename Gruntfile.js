@@ -295,14 +295,16 @@ module.exports = function(grunt) {
         ' * <%= meta.copyright %>, <%= pkg.author.name %> <<%= pkg.author.email %>> \n' +
         ' * Licensed under the <%= meta.license %> License. \n' +
         ' * \n' +
-        ' * @licence \n' +
+        ' */ \n\n' +
+        ' /**' +
+        ' * @license <%= meta.license %>\n' +
         ' */ \n\n'
     },
 
     shell: {
       options: {stdout: true, failOnError: true},
       test: {
-        command: 'node test/less-test.js'
+        command: 'node test'
       },
       benchmark: {
         command: 'node benchmark/less-benchmark.js'

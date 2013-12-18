@@ -1,3 +1,13 @@
+# ???
+
+ - Fixed line/column numbers from math errors
+ - Added a plugins option that allows specifying an array of visitors run on the less AST
+ - fixed issue when adding colours, taking the alpha over 1 and breaking when used in colour functions
+ - when adding together 2 colours with non zero alpha, the alpha will now be combined rather than added
+ - the advanced colour functions no longer ignore transparency, they blend that too
+ - Added --clean-option and cleancssOptions to allow passing in clean css options
+ - Fix possible issue with import reference not bringing in styles (may not be a bugfix, just a code tidy)
+
 # 1.5.1
 
 2013-11-17

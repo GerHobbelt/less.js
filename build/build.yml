@@ -26,6 +26,7 @@ prepend:
     - build/browser-header.js
   rhino:   
     - build/require-rhino.js
+    - build/rhino-header.js
 
 append:
   amd:
