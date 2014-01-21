@@ -25,6 +25,10 @@ test/sourcemaps/*.css
 # grunt
 .grunt
 
+# gradle
+.gradle
+out
+
 # generated archives
 *.tar.gz
 *.zip
