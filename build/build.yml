@@ -138,6 +138,7 @@ tree:
   - <%= build.lib %>/tree/color.js
   - <%= build.lib %>/tree/comment.js
   - <%= build.lib %>/tree/condition.js
+  - <%= build.lib %>/tree/detached-ruleset.js
   - <%= build.lib %>/tree/dimension.js
   - <%= build.lib %>/tree/directive.js
   - <%= build.lib %>/tree/element.js
@@ -154,6 +155,7 @@ tree:
   - <%= build.lib %>/tree/quoted.js
   - <%= build.lib %>/tree/rule.js
   - <%= build.lib %>/tree/ruleset.js
+  - <%= build.lib %>/tree/ruleset-call.js
   - <%= build.lib %>/tree/selector.js
   - <%= build.lib %>/tree/unicode-descriptor.js
   - <%= build.lib %>/tree/url.js
