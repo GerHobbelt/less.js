@@ -1,9 +1,11 @@
 [![Build Status](https://travis-ci.org/less/less.js.png?branch=master)](https://travis-ci.org/less/less.js)
-# [Less.js v1.6.3](http://lesscss.org)
+[![Dependencies](https://david-dm.org/less/less.js.png)](https://david-dm.org/less/less.js) [![devDependency Status](https://david-dm.org/less/less.js/dev-status.png)](https://david-dm.org/less/less.js#info=devDependencies)
+
+# [Less.js v1.7.0](http://lesscss.org)
 
 > The **dynamic** stylesheet language. [http://lesscss.org](http://lesscss.org).
 
-This is the JavaScript, and now official, stable version of Less.
+This is the JavaScript, official, stable version of Less.
 
 
 ## Getting Started
@@ -46,6 +48,6 @@ Copyright (c) 2009-2014 [Alexis Sellier](http://cloudhead.io/) & The Core Less T
 Licensed under the [Apache License](LICENSE).
 
 
-[so]: http://stackoverflow.com/questions/tagged/twitter-bootstrap+less "StackOverflow.com"
+[so]: http://stackoverflow.com/questions/tagged/less "StackOverflow.com"
 [issues]: https://github.com/less/less.js/issues "GitHub Issues for Less.js"
 [download]: https://github.com/less/less.js/zipball/master "Download Less.js"
