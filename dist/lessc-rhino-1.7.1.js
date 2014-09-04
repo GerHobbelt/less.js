@@ -1,4 +1,5 @@
-/*jshint rhino:true, unused: false */
+/* Less.js v1.7.1 RHINO | Copyright (c) 2009-2014, Alexis Sellier <self@cloudhead.net> */
+
 /*global name:true, less, loadStyleSheet, os */
 
 function formatError(ctx, options) {
@@ -71,7 +72,7 @@ function loadStyleSheet(sheet, callback, reload, remaining) {
     contents[sheetName] = input;
         
     var parser = new less.Parser({
-        paths: [sheet.href.replace(/[\w\.\-]+$/, '')],
+        paths: [sheet.href.replace(/[\w\.-]+$/, '')],
         contents: contents
     });
     parser.parse(input, function (e, root) {
@@ -80,8 +81,8 @@ function loadStyleSheet(sheet, callback, reload, remaining) {
         }
         try {
             callback(e, root, input, sheet, { local: false, lastModified: 0, remaining: remaining }, sheetName);
-        } catch(ex) {
-            writeError(ex);
+        } catch(e) {
+            writeError(e);
         }
     });
 }
