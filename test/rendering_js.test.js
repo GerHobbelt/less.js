@@ -74,6 +74,35 @@ describe('RenderingJS', function() {
     assert(layer0.getSymbolizers()[1] === 'line');
   });
 
+  it ("should return list of marker-files", function(){
+    var css = [
+          'Map {',
+          '-torque-time-attribute: "date";',
+          '-torque-aggregation-function: "count(cartodb_id)";',
+          '-torque-frame-count: 760;',
+          '-torque-animation-duration: 15;',
+          '-torque-resolution: 2',
+          '}',
+          '#layer {',
+          '  marker-width: 3;',
+          '  marker-fill-opacity: 0.8;',
+          '  marker-fill: #FEE391; ',
+          '  marker-file: url(http://localhost:8081/gal.svg); ',
+          '  comp-op: "lighten";',
+          '  [value > 2] { marker-file: url(http://upload.wikimedia.org/wikipedia/commons/4/43/Flag_of_the_Galactic_Empire.svg); }',
+          '  [value > 3] { marker-file: url(http://upload.wikimedia.org/wikipedia/commons/c/c9/Flag_of_Syldavia.svg); }',
+          '  [frame-offset = 1] { marker-width: 10; marker-fill-opacity: 0.05;}',
+          '  [frame-offset = 2] { marker-width: 15; marker-fill-opacity: 0.02;}',
+          '}'
+      ].join('\n');
+      var shader = (new carto.RendererJS({ debug: true })).render(css);
+      var markerURLs = shader.getImageURLs();
+      var against = ["http://localhost:8081/gal.svg", "http://upload.wikimedia.org/wikipedia/commons/4/43/Flag_of_the_Galactic_Empire.svg", "http://upload.wikimedia.org/wikipedia/commons/c/c9/Flag_of_Syldavia.svg"];
+      for(var i = 0; i<against.length; i++){
+        assert(against[i] == markerURLs[i])
+      }
+  })
+
   it ("should return variable for styles that change", function() {
     var style = '#test { marker-width: [prop]; }';
     var shader = (new carto.RendererJS({ debug: true })).render(style);
