@@ -33,3 +33,13 @@ out
 *.tar.gz
 *.zip
 
+
+# analyze_github script cache:
+__forks.info__/
+__forks__.bulk_dump
+
+
+# analyze_github script cache:
+__forks.info__/
+__forks__.bulk_dump
+
