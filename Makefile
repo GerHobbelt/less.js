@@ -6,6 +6,13 @@ expresso = ./node_modules/.bin/mocha
 UGLIFYJS=./node_modules/.bin/uglifyjs
 BROWSERIFY = ./node_modules/.bin/browserify
 
+dist/carto.js: dist/carto.uncompressed.js $(shell $(BROWSERIFY) --list lib/carto/index.js)
+	$(UGLIFYJS) dist/carto.uncompressed.js > $@
+
+dist/carto.uncompressed.js: dist $(shell $(BROWSERIFY) --list lib/carto/index.js)
+	$(BROWSERIFY) lib/carto/index.js --exclude node_modules/underscore/underscore.js --standalone carto > $@
+
+
 lint:
 	./node_modules/.bin/jshint lib/carto/*.js lib/carto/tree/*.js
 
@@ -22,11 +29,7 @@ check: test
 dist:
 	mkdir -p dist
 
-dist/carto.uncompressed.js: dist $(shell $(BROWSERIFY) --list lib/carto/index.js)
-	$(BROWSERIFY) lib/carto/index.js --exclude node_modules/underscore/underscore.js --standalone carto > $@
 
-dist/carto.js: dist/carto.uncompressed.js $(shell $(BROWSERIFY) --list lib/carto/index.js)
-	$(UGLIFYJS) dist/carto.uncompressed.js > $@
 
 
 .PHONY: test
