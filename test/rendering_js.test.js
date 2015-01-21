@@ -74,6 +74,17 @@ describe('RenderingJS', function() {
     assert(layer0.getSymbolizers()[1] === 'line');
   });
 
+  it ("colorize should return a list of colours in same order", function() {
+    var style = '#test { image-filters: colorize-alpha(blue, cyan, green, yellow, orange, red); }';
+    var shader = (new carto.RendererJS({ debug: true })).render(style);
+    var layer0 = shader.getLayers()[0];
+    var st = layer0.getStyle({ value: 1 }, {"frame-offset": 0, "zoom": 3});
+    var expectedColours = [[0, 0, 255], [0, 255, 255], [0, 128, 0], [255, 255, 0], [255, 165, 0], [255, 0, 0]];
+    for (var i = 0; i < st["image-filters"].args; i++){
+      assert (st["image-filters"].args[i].rgb === expectedColours[i]);
+    }
+  });
+
   it ("should return list of marker-files", function(){
     var css = [
           'Map {',
