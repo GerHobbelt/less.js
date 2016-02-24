@@ -129,7 +129,14 @@ describe('RenderingJS', function() {
     shader = (new carto.RendererJS({ debug: true })).render(style);
     layer0 = shader.getLayers()[0];
     assert(layer0.isVariable());
+  });
 
+  it("should parse styles with string", function() {
+    var style = '#test { [column = "test\'ing"] { marker-width: 10; } }';
+    var shader = (new carto.RendererJS({ debug: true })).render(style);
+    var layer = shader.getLayers()[0];
+    var props = layer.getStyle({column: 'test\'ing'}, {  'zoom': 0, 'frame-offset': 10 });
+    assert(props['marker-width'] ===  10);
   });
 
 });
