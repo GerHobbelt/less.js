@@ -1,6 +1,6 @@
 # CartoCSS
 
-[![Build Status](https://secure.travis-ci.org/mapbox/carto.png)](http://travis-ci.org/mapbox/carto)
+[![Build Status](https://travis-ci.org/CartoDB/carto.png?branch=master)](https://travis-ci.org/CartoDB/carto)
 
 Is as stylesheet renderer for javascript, It's an evolution of the Mapnik renderer from Mapbox.
 Please, see original [Mapbox repo](http://github.com/mapbox/carto) for more information and credits
