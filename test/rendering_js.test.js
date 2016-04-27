@@ -139,4 +139,14 @@ describe('RenderingJS', function() {
     assert(props['marker-width'] ===  10);
   });
 
+  it("should parse styles with filters not supported by dot notation", function() {
+    var style = '#test["mapnik::geometry_type"=1] { marker-width: 10; }';
+    var shader = (new carto.RendererJS({ debug: true })).render(style);
+    var layer = shader.getLayers()[0];
+    var props = layer.getStyle({"mapnik::geometry_type": 1}, { 'zoom': 0 });
+    assert.equal(props['marker-width'], 10);
+    var emptyFilterProps = layer.getStyle({"mapnik::geometry_type": 2}, { 'zoom': 0 });
+    assert.equal(emptyFilterProps['marker-width'], null);
+  });
+
 });
