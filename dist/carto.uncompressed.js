@@ -449,8 +449,9 @@ carto.Parser = function Parser(env) {
     // - `index`: Char. index where the error occurred.
     function makeError(err) {
         var einput;
+        var errorTemplate;
 
-        _(err).defaults({
+        _.defaults(err, {
             index: furthest,
             filename: env.filename,
             message: 'Parse error.',
@@ -468,8 +469,8 @@ carto.Parser = function Parser(env) {
         for (var n = err.index; n >= 0 && einput.charAt(n) !== '\n'; n--) {
             err.column++;
         }
-
-        return new Error(_('<%=filename%>:<%=line%>:<%=column%> <%=message%>').template(err));
+        errorTemplate = _.template('<%=filename%>:<%=line%>:<%=column%> <%=message%>');
+        return new Error(errorTemplate(err));
     }
 
     this.env = env = env || {};
@@ -1136,7 +1137,7 @@ carto.Renderer = function Renderer(env, options) {
 carto.Renderer.prototype.renderMSS = function render(data) {
     // effects is a container for side-effects, which currently
     // are limited to FontSets.
-    var env = _(this.env).defaults({
+    var env = _.defaults(this.env, {
         benchmark: false,
         validation_data: false,
         effects: []
@@ -1190,7 +1191,7 @@ carto.Renderer.prototype.renderMSS = function render(data) {
 carto.Renderer.prototype.render = function render(m) {
     // effects is a container for side-effects, which currently
     // are limited to FontSets.
-    var env = _(this.env).defaults({
+    var env = _.defaults(this.env, {
         benchmark: false,
         validation_data: false,
         effects: [],
@@ -1204,14 +1205,14 @@ carto.Renderer.prototype.render = function render(m) {
     var output = [];
 
     // Transform stylesheets into definitions.
-    var definitions = _(m.Stylesheet).chain()
+    var definitions = _.chain(m.Stylesheet)
         .map(function(s) {
             if (typeof s == 'string') {
                 throw new Error("Stylesheet object is expected not a string: '" + s + "'");
             }
             // Passing the environment from stylesheet to stylesheet,
             // allows frames and effects to be maintained.
-            env = _(env).extend({filename:s.id});
+            env = _.extend(env, {filename:s.id});
 
             var time = +new Date(),
                 root = (carto.Parser(env)).parse(s.data);
@@ -1272,7 +1273,7 @@ carto.Renderer.prototype.render = function render(m) {
     if (env.errors) throw env.errors;
 
     // Pass TileJSON and other custom parameters through to Mapnik XML.
-    var parameters = _(m).reduce(function(memo, v, k) {
+    var parameters = _.reduce(m, function(memo, v, k) {
         if (!v && v !== 0) return memo;
 
         switch (k) {
@@ -1325,7 +1326,7 @@ carto.Renderer.prototype.render = function render(m) {
         '\n</Parameters>\n'
     );
 
-    var properties = _(map_properties).map(function(v) { return ' ' + v; }).join('');
+    var properties = _.map(map_properties, function(v) { return ' ' + v; }).join('');
 
     output.unshift(
         '<?xml version="1.0" ' +
@@ -1842,7 +1843,10 @@ var _mapnik_reference_latest = {
                 ["x-gradient", 0],
                 ["y-gradient", 0],
                 ["invert", 0],
-                ["sharpen", 0]
+                ["sharpen", 0],
+                ["colorize-alpha", -1],
+                ["color-to-alpha", 1],
+                ["scale-hsla", 8]
             ],
             "doc": "A list of image filters."
         },
@@ -1977,7 +1981,10 @@ var _mapnik_reference_latest = {
                     ["x-gradient", 0],
                     ["y-gradient", 0],
                     ["invert", 0],
-                    ["sharpen", 0]
+                    ["sharpen", 0],
+                    ["colorize-alpha", -1],
+                    ["color-to-alpha", 1],
+                    ["scale-hsla", 8]
                 ],
                 "doc": "A list of image filters."
             },
@@ -4576,7 +4583,7 @@ tree.Filterset.prototype.toJS = function(env) {
       val = filter._val.toString(true);
     }
     var attrs = "data";
-    return attrs + "." + filter.key.value  + " " + op + " " + (val.is === 'string' ? "'"+ val +"'" : val);
+    return attrs + "['" + filter.key.value  + "'] " + op + " " + (val.is === 'string' ? "'" + val.toString().replace(/'/g, "\\'") + "'" : val);
   }).join(' && ');
 };
 
@@ -5757,6 +5764,11 @@ tree.Value.prototype = {
       } else if (val.is === 'field') {
         // replace [variable] by ctx['variable']
         v = v.replace(/\[(.*)\]/g, "data['$1']");
+      }else if (val.is === 'call') {
+        v = JSON.stringify({
+            name: val.name,
+            args: val.args
+        })
       }
       return "_value = " + v + ";";
     }
@@ -7262,7 +7274,7 @@ refs.map(function(version) {
 },{"fs":36,"path":39}],44:[function(require,module,exports){
 module.exports={
   "name": "carto",
-  "version": "0.15.1",
+  "version": "0.15.1-cdb1",
   "description": "CartoCSS Stylesheet Compiler",
   "url": "https://github.com/cartodb/carto",
   "repository": {
@@ -7299,7 +7311,7 @@ module.exports={
     "node": ">=0.4.x"
   },
   "dependencies": {
-    "underscore": "~1.6.0",
+    "underscore": "1.8.3",
     "mapnik-reference": "~6.0.2",
     "optimist": "~0.6.0"
   },
