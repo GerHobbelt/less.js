@@ -149,4 +149,21 @@ describe('RenderingJS', function() {
     assert.equal(emptyFilterProps['marker-width'], null);
   });
 
+  it ("should parse turbocarto", function(){
+    var css = [
+          '#layer {',
+          '  marker-width: ramp([cartodb_id], (#fff, #bbb), jenks);',
+          '}'
+      ].join('\n');
+      var shader = (new carto.RendererJS({ debug: true })).render(css);
+      var layer = shader.getLayers()[0];
+      var st = layer.shader['marker-width'].style({}, {zoom: 1})
+      assert.equal(st.name, "ramp")
+      assert.equal(st.args.length, 3);
+      assert.equal(st.args[1].value[0].rgb[0], 255);
+      assert.equal(st.args[1].value[0].rgb[1], 255);
+      assert.equal(st.args[1].value[0].rgb[2], 255);
+      assert.equal(st.args[2].value, 'jenks');
+  })
+
 });
