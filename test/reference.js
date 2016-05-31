@@ -54,7 +54,8 @@ var _mapnik_reference_latest = {
                     ["x-gradient", 0],
                     ["y-gradient", 0],
                     ["invert", 0],
-                    ["sharpen", 0]
+                    ["sharpen", 0],
+                    ["ramp", 0]
                 ],
                 "doc": "A list of image filters."
             },
