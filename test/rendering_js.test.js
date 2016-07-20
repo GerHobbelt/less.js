@@ -166,7 +166,7 @@ describe('RenderingJS', function() {
       assert.equal(st.args[2].value, 'jenks');
   })
 
-  it.only("should parse turbocarto with inner functions", function(){
+  it("should parse turbocarto with inner functions", function(){
     var css = [
       '#layer {',
       '  marker-width: ramp([cartodb_id], cartocolor(Bold), category(10));',
