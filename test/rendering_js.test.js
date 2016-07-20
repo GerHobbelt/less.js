@@ -166,4 +166,21 @@ describe('RenderingJS', function() {
       assert.equal(st.args[2].value, 'jenks');
   })
 
+  it("should parse turbocarto with inner functions", function(){
+    var css = [
+      '#layer {',
+      '  marker-width: ramp([cartodb_id], cartocolor(Bold), category(10));',
+      '}'
+    ].join('\n');
+    var shader = (new carto.RendererJS({ debug: true })).render(css);
+    var layer = shader.getLayers()[0];
+    var st = layer.shader['marker-width'].style({}, {zoom: 1});
+    assert.equal(st.name, "ramp");
+    assert.equal(st.args.length, 3);
+    assert.equal(st.args[1].name, 'cartocolor');
+    assert.equal(st.args[1].args[0].value, 'Bold');
+    assert.equal(st.args[2].name, 'category');
+    assert.equal(st.args[2].args[0].value, 10);
+  });
+
 });
