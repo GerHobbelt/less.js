@@ -63,7 +63,7 @@ describe('RenderingJS', function() {
 
   it ("symbolizers should be in rendering order", function() {
     var style = '#test { polygon-fill: red; line-color: red; }';
-    style += '#test2 { line-color: red;polygon-fill: red; line-witdh: 10; }';
+    style += '#test2 { line-color: red;polygon-fill: red; line-width: 10; }';
     var shader = (new carto.RendererJS({ debug: true })).render(style);
     var layer0 = shader.getLayers()[0];
     assert(layer0.getSymbolizers()[0] === 'polygon');
@@ -88,11 +88,11 @@ describe('RenderingJS', function() {
   it ("should return list of marker-files", function(){
     var css = [
           'Map {',
-          '-torque-time-attribute: "date";',
-          '-torque-aggregation-function: "count(cartodb_id)";',
-          '-torque-frame-count: 760;',
-          '-torque-animation-duration: 15;',
-          '-torque-resolution: 2',
+            '-torque-time-attribute: "date";',
+            '-torque-aggregation-function: "count(cartodb_id)";',
+            '-torque-frame-count: 760.0;',
+            '-torque-animation-duration: 15.0;',
+            '-torque-resolution: 2.0;',
           '}',
           '#layer {',
           '  marker-width: 3;',
@@ -181,6 +181,106 @@ describe('RenderingJS', function() {
     assert.equal(st.args[1].args[0].value, 'Bold');
     assert.equal(st.args[2].name, 'category');
     assert.equal(st.args[2].args[0].value, 10);
+  });
+
+  describe('Change reference', function () {
+    var style = [
+      '#world {', 
+        'polygon-fill: red;',
+        'line-width: 2;', 
+        'line-color: #f00;', 
+        '[frame-offset = 1] {', 
+          'line-width: 3;', 
+        '}', 
+        '[frame-offset = 2] {', 
+          'line-width: 3;', 
+        '}', 
+      '}', 
+      '', 
+      '#worls[frame-offset = 10] {', 
+          'line-width: 4;', 
+      '}'
+    ].join('\n');
+    
+    var reference = {
+      version: '1.0.0',
+      symbolizers: {
+        line: {
+          "stroke": {
+                "css": "line-color",
+                "default-value": "rgba(0,0,0,1)",
+                "type": "color",
+                "default-meaning": "black and fully opaque (alpha = 1), same as rgb(0,0,0)",
+                "doc": "The color of a drawn line"
+            },
+            "stroke-width": {
+                "css": "line-width",
+                "default-value": 1,
+                "type": "float",
+                "doc": "The width of a line in pixels"
+            },
+            "stroke-opacity": {
+                "css": "line-opacity",
+                "default-value": 1,
+                "type": "float",
+                "default-meaning": "opaque",
+                "doc": "The opacity of a line"
+            },
+            "stroke-linejoin": {
+                "css": "line-join",
+                "default-value": "miter",
+                "type": [
+                    "miter",
+                    "miter-revert",
+                    "round",
+                    "bevel"
+                ],
+                "expression": true,
+                "doc": "The behavior of lines when joining.",
+                "default-meaning": "The line joins will be rendered using a miter look."
+            },
+            "stroke-linecap": {
+                "css": "line-cap",
+                "default-value": "butt",
+                "type": [
+                    "butt",
+                    "round",
+                    "square"
+                ],
+                "expression": true,
+                "doc": "The display of line endings.",
+                "default-meaning": "The line endings will be rendered using a butt look."
+            },
+            "comp-op": {
+                "css": "line-comp-op",
+                "default-value": "overlay",
+                "default-meaning": "Add the current symbolizer on top of other symbolizer.",
+                "doc": "Composite operation. This defines how this symbolizer should behave relative to symbolizers atop or below it.",
+                "type": [
+                    "multiply",
+                    "add",
+                    "overlay"
+                ],
+                "expression": true
+            },
+            "stroke-dasharray": {
+                "css": "line-dasharray",
+                "type": "numbers",
+                "expression": true,
+                "doc": "A pair of length values [a,b], where (a) is the dash length and (b) is the gap length respectively. More than two values are supported for more complex patterns.",
+                "default-value": "none",
+                "default-meaning": "The line will be drawn without dashes."
+            }
+        }
+      }
+    };
+
+    it('should fail if a feature is not supported', function () {
+      assert.throws(function () {
+        var RendererJS = new carto.RendererJS({reference: reference, mapnik_version: '1.0.0'});
+        var shader = RendererJS.render(style);
+      }, Error);
+    });
   });
 
 });
