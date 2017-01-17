@@ -1,6 +1,8 @@
 
 var assert = require('assert');
 var carto = require('../lib/carto');
+var tree = require('../lib/carto/tree');
+
 describe('RenderingJS', function() {
   var shader;
   var style = [
@@ -275,12 +277,25 @@ describe('RenderingJS', function() {
       }
     };
 
-    it('should fail if a feature is not supported', function () {
-      assert.throws(function () {
-        var RendererJS = new carto.RendererJS({reference: reference, mapnik_version: '1.0.0'});
-        var shader = RendererJS.render(style);
-      }, Error);
+    describe('cartocss reference in options', function() {
+
+      before(function() {
+        this.referenceData = tree.Reference.data;
+      });
+
+      after(function() {
+        tree.Reference.setData(this.referenceData);
+      });
+
+      it('should fail if a feature is not supported', function () {
+        assert.throws(function () {
+          var RendererJS = new carto.RendererJS({reference: reference, mapnik_version: '1.0.0'});
+          var shader = RendererJS.render(style);
+        }, Error);
+      });
+
     });
+
   });
 
 });
