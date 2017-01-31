@@ -93,7 +93,7 @@ describe('RenderingJS', function() {
           '-torque-aggregation-function: "count(cartodb_id)";',
           '-torque-frame-count: 760;',
           '-torque-animation-duration: 15;',
-          '-torque-resolution: 2;',
+          '-torque-resolution: 2',
           '}',
           '#layer {',
           '  marker-width: 3;',
