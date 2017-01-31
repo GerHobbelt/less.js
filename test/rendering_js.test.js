@@ -1,7 +1,6 @@
 
 var assert = require('assert');
 var carto = require('../lib/carto');
-var tree = require('../lib/carto/tree');
 
 describe('RenderingJS', function() {
   var shader;
@@ -90,11 +89,11 @@ describe('RenderingJS', function() {
   it ("should return list of marker-files", function(){
     var css = [
           'Map {',
-            '-torque-time-attribute: "date";',
-            '-torque-aggregation-function: "count(cartodb_id)";',
-            '-torque-frame-count: 760.0;',
-            '-torque-animation-duration: 15.0;',
-            '-torque-resolution: 2.0;',
+          '-torque-time-attribute: "date";',
+          '-torque-aggregation-function: "count(cartodb_id)";',
+          '-torque-frame-count: 760;',
+          '-torque-animation-duration: 15;',
+          '-torque-resolution: 2;',
           '}',
           '#layer {',
           '  marker-width: 3;',
