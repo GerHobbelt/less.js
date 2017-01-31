@@ -206,6 +206,10 @@ describe('RenderingJS', function() {
     
     var reference = {
       version: '1.0.0',
+      style: {},
+      layer: {},
+      colors: {},
+      filter: {},
       symbolizers: {
         line: {
           "stroke": {
