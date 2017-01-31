@@ -1,6 +1,7 @@
 
 var assert = require('assert');
 var carto = require('../lib/carto');
+
 describe('RenderingJS', function() {
   var shader;
   var style = [
@@ -63,7 +64,7 @@ describe('RenderingJS', function() {
 
   it ("symbolizers should be in rendering order", function() {
     var style = '#test { polygon-fill: red; line-color: red; }';
-    style += '#test2 { line-color: red;polygon-fill: red; line-witdh: 10; }';
+    style += '#test2 { line-color: red;polygon-fill: red; line-width: 10; }';
     var shader = (new carto.RendererJS({ debug: true })).render(style);
     var layer0 = shader.getLayers()[0];
     assert(layer0.getSymbolizers()[0] === 'polygon');
