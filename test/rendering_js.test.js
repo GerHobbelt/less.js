@@ -279,6 +279,8 @@ describe('RenderingJS', function() {
 
     describe('cartocss reference in options', function() {
 
+      var expectedErrorMessageRegex = /Unrecognized rule: polygon-fill/;
+
       before(function() {
         this.referenceData = tree.Reference.data;
       });
@@ -291,7 +293,7 @@ describe('RenderingJS', function() {
         assert.throws(function () {
           var RendererJS = new carto.RendererJS({reference: reference, mapnik_version: '1.0.0'});
           var shader = RendererJS.render(style);
-        }, Error);
+        }, expectedErrorMessageRegex);
       });
 
     });
