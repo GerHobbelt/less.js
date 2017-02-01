@@ -106,7 +106,9 @@ describe('RendererJS Strict Mode', function() {
   });
 
   after(function() {
-    tree.Reference.setData(this.referenceData);
+    if (this.referenceData) {
+      tree.Reference.setData(this.referenceData);
+    }
   });
 
   it('should fail if a feature is not supported and strict is turned on', function () {
