@@ -1,7 +1,6 @@
 
 var assert = require('assert');
 var carto = require('../lib/carto');
-
 describe('RenderingJS', function() {
   var shader;
   var style = [
