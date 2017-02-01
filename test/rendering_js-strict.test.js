@@ -141,4 +141,11 @@ describe('RendererJS Strict Mode', function() {
     new carto.RendererJS({reference: reference, mapnik_version: '1.0.0', strict: false })
   ));
 
+  it('should pass if a feature is supported and strict is turned on', function () {
+    var RendererJS = new carto.RendererJS({reference: reference, mapnik_version: '1.0.0', strict: true });
+    var cartocss = '#layer { line-width: 10 }';
+    var shader = RendererJS.render(cartocss);
+    assert.ok(shader);
+  });
+
 });
