@@ -4,24 +4,24 @@ var carto = require('../lib/carto');
 describe('RenderingJS', function() {
   var shader;
   var style = [
-  '#world {', 
-    'line-width: 2;', 
-    'line-color: #f00;', 
-    '[frame-offset = 1] {', 
-      'line-width: 3;', 
-    '}', 
-    '[frame-offset = 2] {', 
-      'line-width: 3;', 
-    '}', 
-  '}', 
-  '', 
-  '#worls[frame-offset = 10] {', 
-      'line-width: 4;', 
+  '#world {',
+    'line-width: 2;',
+    'line-color: #f00;',
+    '[frame-offset = 1] {',
+      'line-width: 3;',
+    '}',
+    '[frame-offset = 2] {',
+      'line-width: 3;',
+    '}',
+  '}',
+  '',
+  '#worls[frame-offset = 10] {',
+      'line-width: 4;',
   '}'
   ].join('\n');
 
   beforeEach(function() {
-    shader = (new carto.RendererJS({ debug: true })).render(style);
+    shader = (new carto.RendererJS({ debug: false })).render(style);
   });
 
   it ("shold render layers", function() {
@@ -183,4 +183,17 @@ describe('RenderingJS', function() {
     assert.equal(st.args[2].args[0].value, 10);
   });
 
+  it("should not throw `ReferenceError`", function(){
+    var css = [
+      '#layer[name=~".*Cairo*"] {',
+      '  marker-width: 14;',
+      '}'
+    ].join('\n');
+
+    assert.doesNotThrow(function () {
+      var shader = (new carto.RendererJS({})).render(css);
+      var layer = shader.getLayers()[0];
+      var value = layer.shader['marker-width'].style({ name: 'wadus' }, { zoom: 1 });
+    });
+  });
 });
