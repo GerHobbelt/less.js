@@ -183,7 +183,7 @@ describe('RenderingJS', function() {
     assert.equal(st.args[2].args[0].value, 10);
   });
 
-  it("should not throw `ReferenceError`", function(){
+  it("should not throw `ReferenceError` with `=~` operator", function(){
     var css = [
       '#layer[name=~".*Cairo*"] {',
       '  marker-width: 14;',
@@ -194,6 +194,23 @@ describe('RenderingJS', function() {
       var shader = (new carto.RendererJS({})).render(css);
       var layer = shader.getLayers()[0];
       var value = layer.shader['marker-width'].style({ name: 'wadus' }, { zoom: 1 });
+    });
+  });
+ 
+  it("should not throw `TypeError` if left operand is not a `string` with operator `=~`", function(){
+    var css = [
+      '#layer[name=~1] {',
+      '  marker-width: 14;',
+      '}'
+    ].join('\n');
+
+    assert.doesNotThrow(function () {
+      var shader = (new carto.RendererJS({})).render(css);
+      var layer = shader.getLayers()[0];
+      var value = layer.shader['marker-width'].style({ name: 1 }, { zoom: 1 });
+      value = layer.shader['marker-width'].style({ name: null }, { zoom: 1 });
+      value = layer.shader['marker-width'].style({ name: undefined }, { zoom: 1 });
+      value = layer.shader['marker-width'].style({ name: true }, { zoom: 1 });
     });
   });
 });
