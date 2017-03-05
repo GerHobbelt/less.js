@@ -183,4 +183,16 @@ describe('RenderingJS', function() {
     assert.equal(st.args[2].args[0].value, 10);
   });
 
+  it("should work with multiple operands", function(){
+    var css = [
+      '#layer {',
+      '  marker-width: [value] * [value] * 0.5;',
+      '}'
+    ].join('\n');
+    var shader = (new carto.RendererJS({ debug: false })).render(css);
+    var layer = shader.getLayers()[0];
+    var width = layer.shader['marker-width'].style({value: 4}, {zoom: 1});
+    assert.equal(width, 8);
+  });
+
 });
