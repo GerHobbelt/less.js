@@ -194,7 +194,7 @@ describe('RenderingJS', function() {
       var shader = (new carto.RendererJS({})).render(css);
       var layer = shader.getLayers()[0];
       var value = layer.shader['marker-width'].style({ name: 'wadus' }, { zoom: 1 });
-    });
+    }, ReferenceError);
   });
   
   it("`=~` operator should support numbers", function(){
