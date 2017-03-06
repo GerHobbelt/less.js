@@ -4,24 +4,24 @@ var carto = require('../lib/carto');
 describe('RenderingJS', function() {
   var shader;
   var style = [
-  '#world {',
-    'line-width: 2;',
-    'line-color: #f00;',
-    '[frame-offset = 1] {',
-      'line-width: 3;',
-    '}',
-    '[frame-offset = 2] {',
-      'line-width: 3;',
-    '}',
-  '}',
-  '',
-  '#worls[frame-offset = 10] {',
-      'line-width: 4;',
+  '#world {', 
+    'line-width: 2;', 
+    'line-color: #f00;', 
+    '[frame-offset = 1] {', 
+      'line-width: 3;', 
+    '}', 
+    '[frame-offset = 2] {', 
+      'line-width: 3;', 
+    '}', 
+  '}', 
+  '', 
+  '#worls[frame-offset = 10] {', 
+      'line-width: 4;', 
   '}'
   ].join('\n');
 
   beforeEach(function() {
-    shader = (new carto.RendererJS({ debug: false })).render(style);
+    shader = (new carto.RendererJS({ debug: true })).render(style);
   });
 
   it ("shold render layers", function() {
