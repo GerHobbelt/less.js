@@ -32,7 +32,7 @@ describe('RenderingJS', function() {
     var layer = shader.getLayers()[0];
     assert( layer.frames()[0] === 0);
     assert( layer.frames()[1] === 1);
-  
+
     layer = shader.getLayers()[1];
     assert( layer.frames()[0] === 10);
   });
