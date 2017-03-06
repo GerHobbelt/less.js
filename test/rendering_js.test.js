@@ -194,6 +194,7 @@ describe('RenderingJS', function() {
       var shader = (new carto.RendererJS({})).render(css);
       var layer = shader.getLayers()[0];
       var value = layer.shader['marker-width'].style({ name: 'wadus' }, { zoom: 1 });
+      assert.equal(value, 14);
     }, ReferenceError);
   });
   
@@ -208,6 +209,7 @@ describe('RenderingJS', function() {
       var shader = (new carto.RendererJS({})).render(css);
       var layer = shader.getLayers()[0];
       var value = layer.shader['marker-width'].style({ value: 10 }, { zoom: 1 });
+      assert.equal(value, 14);
     }, Error);
   });
 });
