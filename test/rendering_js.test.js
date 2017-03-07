@@ -183,4 +183,33 @@ describe('RenderingJS', function() {
     assert.equal(st.args[2].args[0].value, 10);
   });
 
+  it("should not throw `ReferenceError` with `=~` operator", function(){
+    var css = [
+      '#layer[name=~".*wadus*"] {',
+      '  marker-width: 14;',
+      '}'
+    ].join('\n');
+
+    assert.doesNotThrow(function () {
+      var shader = (new carto.RendererJS({})).render(css);
+      var layer = shader.getLayers()[0];
+      var value = layer.shader['marker-width'].style({ name: 'wadus' }, { zoom: 1 });
+      assert.equal(value, 14);
+    }, ReferenceError);
+  });
+  
+  it("`=~` operator should support numbers", function(){
+    var css = [
+      '#layer[value=~"^10"] {',
+      '  marker-width: 14;',
+      '}'
+    ].join('\n');
+
+    assert.doesNotThrow(function () {
+      var shader = (new carto.RendererJS({})).render(css);
+      var layer = shader.getLayers()[0];
+      var value = layer.shader['marker-width'].style({ value: 10 }, { zoom: 1 });
+      assert.equal(value, 14);
+    }, Error);
+  });
 });
