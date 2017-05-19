@@ -1,23 +1,22 @@
 
 var assert = require('assert');
 var carto = require('../lib/carto');
-
 describe('RenderingJS', function() {
   var shader;
   var style = [
-  '#world {', 
-    'line-width: 2;', 
-    'line-color: #f00;', 
-    '[frame-offset = 1] {', 
-      'line-width: 3;', 
-    '}', 
-    '[frame-offset = 2] {', 
-      'line-width: 3;', 
-    '}', 
-  '}', 
-  '', 
-  '#worls[frame-offset = 10] {', 
-      'line-width: 4;', 
+  '#world {',
+    'line-width: 2;',
+    'line-color: #f00;',
+    '[frame-offset = 1] {',
+      'line-width: 3;',
+    '}',
+    '[frame-offset = 2] {',
+      'line-width: 3;',
+    '}',
+  '}',
+  '',
+  '#worls[frame-offset = 10] {',
+      'line-width: 4;',
   '}'
   ].join('\n');
 
@@ -184,4 +183,45 @@ describe('RenderingJS', function() {
     assert.equal(st.args[2].args[0].value, 10);
   });
 
+  it("should work with multiple operands", function(){
+    var css = [
+      '#layer {',
+      '  marker-width: [value] * [value] * 0.5;',
+      '}'
+    ].join('\n');
+    var shader = (new carto.RendererJS({ debug: false })).render(css);
+    var layer = shader.getLayers()[0];
+    var width = layer.shader['marker-width'].style({value: 4}, {zoom: 1});
+    assert.equal(width, 8);
+  });
+
+  it("should not throw `ReferenceError` with `=~` operator", function(){
+    var css = [
+      '#layer[name=~".*wadus*"] {',
+      '  marker-width: 14;',
+      '}'
+    ].join('\n');
+
+    assert.doesNotThrow(function () {
+      var shader = (new carto.RendererJS({})).render(css);
+      var layer = shader.getLayers()[0];
+      var value = layer.shader['marker-width'].style({ name: 'wadus' }, { zoom: 1 });
+      assert.equal(value, 14);
+    }, ReferenceError);
+  });
+
+  it("`=~` operator should support numbers", function(){
+    var css = [
+      '#layer[value=~"^10"] {',
+      '  marker-width: 14;',
+      '}'
+    ].join('\n');
+
+    assert.doesNotThrow(function () {
+      var shader = (new carto.RendererJS({})).render(css);
+      var layer = shader.getLayers()[0];
+      var value = layer.shader['marker-width'].style({ value: 10 }, { zoom: 1 });
+      assert.equal(value, 14);
+    }, Error);
+  });
 });

@@ -106,7 +106,9 @@ describe('RendererJS Strict Mode', function() {
   });
 
   after(function() {
-    tree.Reference.setData(this.referenceData);
+    if (this.referenceData) {
+      tree.Reference.setData(this.referenceData);
+    }
   });
 
   it('should fail if a feature is not supported and strict is turned on', function () {
@@ -122,9 +124,6 @@ describe('RendererJS Strict Mode', function() {
   function rendererStrictModeOffTest(RendererJS) {
     return function () {
       var shader = RendererJS.render(style);
-      assert.ok(shader.parse_env);
-      assert.ok(shader.parse_env.errors);
-      assert.ok(shader.parse_env.errors.message.match(expectedErrorMessageRegex));
 
       assert.ok(shader.layers);
       assert.equal(shader.layers.length, 2);
@@ -135,8 +134,15 @@ describe('RendererJS Strict Mode', function() {
     new carto.RendererJS({reference: reference, mapnik_version: '1.0.0' })
   ));
 
-  it('should pass if a feature is not supported but strict is turned off', rendererStrictModeOffTest(
+  it('should pass if a feature is not supported but strict is turned off', function () {
     new carto.RendererJS({reference: reference, mapnik_version: '1.0.0', strict: false })
-  ));
+  });
+
+  it('should pass if a feature is supported and strict is turned on', function () {
+    var RendererJS = new carto.RendererJS({reference: reference, mapnik_version: '1.0.0', strict: true });
+    var cartocss = '#layer { line-width: 10 }';
+    var shader = RendererJS.render(cartocss);
+    assert.ok(shader);
+  });
 
 });
