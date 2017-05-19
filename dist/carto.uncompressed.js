@@ -1597,7 +1597,7 @@ CartoCSS.Layer.prototype = {
   },
 
   /**
-   * return the symbolizers that need to be rendered with 
+   * return the symbolizers that need to be rendered with
    * this style. The order is the rendering order.
    * @returns a list with 3 possible values 'line', 'marker', 'polygon'
    */
@@ -1639,7 +1639,7 @@ CartoCSS.Layer.prototype = {
 
   //
   // given a geoemtry type returns the transformed one acording the CartoCSS
-  // For points there are two kind of types: point and sprite, the first one 
+  // For points there are two kind of types: point and sprite, the first one
   // is a circle, second one is an image sprite
   //
   // the other geometry types are the same than geojson (polygon, linestring...)
@@ -1746,15 +1746,9 @@ CartoCSS.prototype = {
         for(var u = 0; u<def.rules.length; u++){
           var rule = def.rules[u];
             if(rule.name === "marker-file" || rule.name === "point-file"){
-                var value = rule.value.value[0].value[0].value.value;
-                this.imageURLs.push(value);
+              var value = rule.value.value[0].value[0].value.value;
+              this.imageURLs.push(value);
             }
-
-            rule.toXML(parse_env, {});
-        } 
-
-        if (this.options.strict && parse_env.errors.message) {
-          throw new Error(parse_env.errors.message);
         }
 
         layer.frames = [];
@@ -1784,6 +1778,14 @@ CartoCSS.prototype = {
       var done = {};
       for(var i = 0; i < defs.length; ++i) {
         var def = defs[i];
+
+        if (this.options.strict) {
+          def.toXML(parse_env, {});
+          if (parse_env.errors.message) {
+            throw new Error(parse_env.errors.message);
+          }
+        }
+
         var k = defKey(def);
         var layer = layers[k];
         if(!done[k]) {
@@ -1819,14 +1821,14 @@ CartoCSS.prototype = {
 
 carto.RendererJS = function (options) {
     this.options = options || {};
-    var reference = this.options.reference || require('./torque-reference').version.latest;
-    tree.Reference.setData(reference);
     this.options.mapnik_version = this.options.mapnik_version || 'latest';
+    this.reference = this.options.reference || require('./torque-reference').version.latest;
     this.options.strict = this.options.hasOwnProperty('strict') ? this.options.strict : false;
 };
 
 // Prepare a javascript object which contains the layers
 carto.RendererJS.prototype.render = function render(cartocss, callback) {
+    tree.Reference.setData(this.reference);
     return new CartoCSS(cartocss, this.options);
 }
 
@@ -4624,6 +4626,9 @@ tree.Filterset.prototype.toJS = function(env) {
       val = filter._val.toString(true);
     }
     var attrs = "data";
+    if (op === '=~') {
+      return "(" + attrs + "['" + filter.key.value  + "'] + '').match(" + (val.is === 'string' ? "'" + val.toString().replace(/'/g, "\\'") + "'" : val) + ")";
+    }
     return attrs + "['" + filter.key.value  + "'] " + op + " " + (val.is === 'string' ? "'" + val.toString().replace(/'/g, "\\'") + "'" : val);
   }).join(' && ');
 };
@@ -5804,7 +5809,9 @@ tree.Value.prototype = {
         v = "'" + v + "'";
       } else if (val.is === 'field') {
         // replace [variable] by ctx['variable']
-        v = v.replace(/\[(.*)\]/g, "data['$1']");
+        v = v.replace(/\[([^\]]*)\]/g, function(matched) {
+            return matched.replace(/\[(.*)\]/g, "data['$1']");
+        });
       }else if (val.is === 'call') {
         v = JSON.stringify({
             name: val.name,
@@ -7315,7 +7322,7 @@ function hasOwnProperty(obj, prop) {
 },{"./support/isBuffer":42,"_process":40,"inherits":41}],44:[function(require,module,exports){
 module.exports={
   "name": "carto",
-  "version": "0.15.1-cdb1",
+  "version": "0.15.1-cdb3",
   "description": "CartoCSS Stylesheet Compiler",
   "url": "https://github.com/cartodb/carto",
   "repository": {
