@@ -18,49 +18,53 @@
  */
 var assert = require('assert');
 var Carto = require('../lib/carto/index.js');
-var renderer = new Carto.RendererJS({strict: true});
+var renderer = new Carto.RendererJS({ strict: true });
 
 
 describe('Field:filtered propery', function () {
     it('should be false when the property is not filtered', function () {
-        var style = `
-            #layer {
-                marker-fill: red;
-            }`;
+        var style = [
+            '#layer {',
+            '  marker-fill: red;',
+            '}'
+        ].join('\n');
         var layers = renderer.render(style).layers[0].shader;
         assert(!layers['marker-fill'].filtered);
     });
 
     it('should be true when the property is filtered', function () {
-        style = `
-        #layer {
-            [foo > 30]{
-                marker-fill: red;
-            }
-        }`;
+        var style = [
+            '#layer {',
+            '  [foo > 30] {',
+            '    marker-fill: red;',
+            '  }',
+            '}'
+        ].join('\n');
 
         var layers = renderer.render(style).layers[0].shader;
         assert(layers['marker-fill'].filtered);
     });
 
     it('should be true when the property is filtered at first level', function () {
-        style = `
-        #layer [foo > 30]{
-            marker-fill: red;
-        }`;
+        var style = [
+            '#layer [foo > 30] {',
+            '  marker-fill: red;',
+            '}`'
+        ].join('\n');
 
         var layers = renderer.render(style).layers[0].shader;
         assert(layers['marker-fill'].filtered);
     });
 
     it('should be false when the property is not filterd but there is another filtered properties', function () {
-        style = `
-        #layer {
-            marker-fill: red;
-            [bar < 200]{
-                marker-allow-overlap: false;
-            }
-        }`;
+        var style = [
+            '#layer {',
+            '   marker-fill: red;',
+            '   [bar < 200]{',
+            '       marker-allow-overlap: false;',
+            '    }',
+            '}`'
+        ].join('\n');
 
         var layers = renderer.render(style).layers[0].shader;
 
@@ -69,14 +73,14 @@ describe('Field:filtered propery', function () {
     });
 
     it('should be true when the property is filtered and have a default value', function () {
-        style = `
-        #layer {
-            marker-fill: red;
-            [bar < 200]{
-                marker-fill: blue;
-            }
-        }`;
-
+        var style = [
+            '#layer {',
+            '   marker-fill: red;',
+            '   [bar < 200]{',
+            '       marker-fill: blue;',
+            '    }',
+            '}`'
+        ].join('\n');
         var layers = renderer.render(style).layers[0].shader;
 
         assert(layers['marker-fill'].filtered);
