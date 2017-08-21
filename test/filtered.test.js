@@ -7,21 +7,20 @@
  * This field gives information about whether a property is filtered or not.
  * 
  * A property is filtered if it was activated inside a filter. In the following cartocss
- * code marker-color.filtered will be true because is inside a population filter.
+ * code marker-color.filtered will be true because it's inside a population filter.
  * 
  * #layer {
  *   maker-width: 20;
  *   [population > 100] {
- *    marker-color: red; // 
+ *     marker-color: red; // this property is filtered
  *   }
  * }
  * 
- * "zoom" is a special case, and it only should be considered when it's value is not the default. 
+ * "zoom" is a special case, and it only should be considered when its value is not the default.
  */
 var assert = require('assert');
 var Carto = require('../lib/carto/index.js');
 var renderer = new Carto.RendererJS({ strict: true });
-
 
 describe('property.filtered', function () {
     it('should be false when the property is not filtered', function () {
