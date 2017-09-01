@@ -195,6 +195,18 @@ describe('RenderingJS', function() {
     assert.equal(width, 8);
   });
 
+  it("should work with numbers", function(){
+    var css = [
+      '#layer {',
+      '  line-dasharray: 5, 10;',
+      '}'
+    ].join('\n');
+    var shader = (new carto.RendererJS({ debug: false })).render(css);
+    var layer = shader.getLayers()[0];
+    var dasharray = layer.shader['line-dasharray'].style({value: 4}, {zoom: 1});
+    assert.deepEqual(dasharray, [5, 10]);
+  });
+
   it("should not throw `ReferenceError` with `=~` operator", function(){
     var css = [
       '#layer[name=~".*wadus*"] {',
